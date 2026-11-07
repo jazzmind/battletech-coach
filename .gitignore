@@ -67,3 +67,7 @@ Thumbs.db
 *.swp
 *.swo
 .idea
+
+# Keep the empty template even if a tool appends a broad env pattern.
+!.env.example
+!.env.sample
