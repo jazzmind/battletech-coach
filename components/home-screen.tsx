@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
 import type { Faction, Group } from "@/lib/game/types"
-import { loadPlayerId } from "@/lib/ids"
+import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { Mark } from "./mark"
 
 const GROUPS: Group[] = ["teaching", "real", "graduation"]
@@ -43,6 +43,7 @@ export function HomeScreen() {
       setError(data.error ?? "Could not start.")
       return
     }
+    if (typeof data.playerId === "string") savePlayerId(data.playerId)
     router.push(`/game/${data.state.code}`)
   }
 
@@ -62,6 +63,9 @@ export function HomeScreen() {
       setError(data.error ?? "Could not join.")
       return
     }
+    if (typeof data.playerId === "string") savePlayerId(data.playerId)
+    const seat = data.state?.players?.find((player: { id: string; name: string }) => player.id === data.playerId)
+    if (seat?.name) localStorage.setItem("mech-coach-name", seat.name)
     router.push(`/game/${data.state.code}`)
   }
 
@@ -119,6 +123,7 @@ export function HomeScreen() {
         </section>
         <section className="panel">
           <h2>Join with a code</h2>
+          <p className="lede">Use the same name as the other screen. This device opens that seat.</p>
           <label>
             Your name
             <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} />

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { present } from "@/lib/game/present"
 import type { Action, GameState, Screen } from "@/lib/game/types"
-import { loadPlayerId } from "@/lib/ids"
+import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { Mark } from "./mark"
 
 export function CoachScreen({ code }: { code: string }) {
@@ -70,7 +70,16 @@ export function CoachScreen({ code }: { code: string }) {
       body: JSON.stringify({ name, playerId }),
     })
     const data = await response.json()
+    if (typeof data.playerId === "string") {
+      savePlayerId(data.playerId)
+      setPlayerId(data.playerId)
+    }
     if (data.state) setState(data.state)
+    const seat = data.state?.players?.find((player: { id: string; name: string }) => player.id === data.playerId)
+    if (seat?.name) {
+      localStorage.setItem("mech-coach-name", seat.name)
+      setName(seat.name)
+    }
     if (!response.ok) setError(data.error ?? "Could not join.")
     setBusy(false)
   }
@@ -94,7 +103,8 @@ export function CoachScreen({ code }: { code: string }) {
           <Mark />
           <div>
             <h1>Join {code}</h1>
-            <p>Type your name to sit down.</p>
+            <p>Type the name you used on the other screen. This device shows that seat.</p>
+            <p>Already at the table: {state.players.map((player) => player.name).join(" and ")}.</p>
           </div>
         </header>
         <section className="panel" style={{ marginTop: "1rem" }}>

@@ -52,6 +52,21 @@ export function createGame(input: {
   }
 }
 
+export function claimSeat(
+  state: GameState,
+  input: { playerId: string; name: string },
+): { state: GameState; playerId: string } {
+  const cleaned = cleanName(input.name)
+  const named = state.players.filter((player) => player.name.toLowerCase() === cleaned.toLowerCase())
+  if (named.length > 1) {
+    throw new RuleError("Both seats use that name. Stay on the screen that already has the buttons.")
+  }
+  if (named.length === 1) return { state, playerId: named[0].id }
+  if (state.players.some((player) => player.id === input.playerId)) return { state, playerId: input.playerId }
+  const next = applyAction(state, { type: "join", playerId: input.playerId, name: cleaned })
+  return { state: next, playerId: input.playerId }
+}
+
 export function applyAction(state: GameState, action: Action): GameState {
   if (action.type === "join" && state.players.some((player) => player.id === action.playerId)) {
     return state

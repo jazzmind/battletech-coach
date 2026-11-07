@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { attackPreview, adjustedMove, defenderTmm } from "./math"
-import { applyAction, createGame, currentCard, rulesOf } from "./flow"
+import { applyAction, claimSeat, createGame, currentCard, rulesOf } from "./flow"
 import type { Action, GameState, Mech } from "./types"
 import { RuleError } from "./types"
 
@@ -428,6 +428,40 @@ function finishQuietTurn(state: GameState, low: "host" | "kid"): GameState {
 function heatText(state: GameState): string {
   return state.mechs.map((mech) => `${mech.name}:${mech.hot ? "Hot" : "cool"}`).join(" ")
 }
+
+describe("handoff", () => {
+  it("opens the named seat on a new device without adding a player", () => {
+    const started = boot("first-steps")
+    const version = started.version
+    const claimed = claimSeat(started, { playerId: "ipad-device", name: "sam" })
+    assert.equal(claimed.playerId, "kid")
+    assert.equal(claimed.state, started)
+    assert.equal(claimed.state.version, version)
+    assert.equal(claimed.state.players.length, 2)
+  })
+
+  it("still sits a new name down when a seat is open", () => {
+    const lobby = createGame({
+      code: "TEST",
+      scenarioId: "first-steps",
+      hostId: "host",
+      hostName: "Wes",
+      faction: "innerSphere",
+    })
+    const claimed = claimSeat(lobby, { playerId: "ipad-device", name: "Sam" })
+    assert.equal(claimed.playerId, "ipad-device")
+    assert.equal(claimed.state.players.length, 2)
+    assert.equal(claimed.state.players[1].name, "Sam")
+  })
+
+  it("refuses a new name once both seats are taken", () => {
+    const started = boot("first-steps")
+    assert.throws(
+      () => claimSeat(started, { playerId: "ipad-device", name: "Alex" }),
+      (error: unknown) => error instanceof RuleError && error.message === "This game has already started.",
+    )
+  })
+})
 
 function game(scenarioId: string): GameState {
   return createGame({

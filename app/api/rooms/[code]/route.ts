@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { applyAction } from "@/lib/game/flow"
+import { claimSeat } from "@/lib/game/flow"
 import { RuleError } from "@/lib/game/types"
 import { getRoom, updateRoom } from "@/lib/store"
 
@@ -27,16 +27,16 @@ export async function POST(request: Request, context: Context) {
   }
   const playerId = typeof body.playerId === "string" && body.playerId.length >= 8 ? body.playerId : crypto.randomUUID()
   try {
-    const next = applyAction(current, { type: "join", playerId, name: body.name ?? "" })
-    if (next === current) return NextResponse.json({ state: current, playerId })
-    const saved = await updateRoom(code, current.version, next)
+    const claimed = claimSeat(current, { playerId, name: body.name ?? "" })
+    if (claimed.state === current) return NextResponse.json({ state: current, playerId: claimed.playerId })
+    const saved = await updateRoom(code, current.version, claimed.state)
     if (!saved.ok) {
       return NextResponse.json(
         { error: "The table moved. Updating.", state: saved.current },
         { status: 409 },
       )
     }
-    return NextResponse.json({ state: next, playerId })
+    return NextResponse.json({ state: claimed.state, playerId: claimed.playerId })
   } catch (error) {
     if (error instanceof RuleError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error(error)
