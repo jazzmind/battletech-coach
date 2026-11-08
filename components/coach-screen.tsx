@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { present } from "@/lib/game/present"
 import { SCENARIOS } from "@/lib/game/scenarios"
@@ -18,6 +18,7 @@ export function CoachScreen({ code }: { code: string }) {
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState("")
   const [poolFor, setPoolFor] = useState<string | null>(null)
+  const [lookOpen, setLookOpen] = useState(false)
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
@@ -161,18 +162,40 @@ export function CoachScreen({ code }: { code: string }) {
         </div>
       </header>
       <div className="play">
-        <aside className="hud">
+        <aside className={`hud${lookOpen ? " look-open" : ""}`}>
           <h2>{screen.hud.turn}</h2>
           <p className="meta">{screen.hud.scenario}</p>
+          <div className="hud-body">
           {screen.hud.rows.map((row) => (
             <div key={row.name} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
               <span className="who">{row.name}</span>
               <span className="detail">{row.detail}</span>
             </div>
           ))}
+          </div>
+          <div className="hud-tools">
+            {screen.undo ? (
+              <button
+                className="icon-btn"
+                type="button"
+                aria-label="Undo last tap"
+                title="Undo last tap"
+                disabled={busy}
+                onClick={() => void send(screen.undo as Action)}
+              >
+                <UndoIcon />
+              </button>
+            ) : null}
+            <TableLook
+              screen={screen}
+              playerName={state.players.find((player) => player.id === playerId)?.name ?? name}
+              onOpenChange={setLookOpen}
+            />
+          </div>
         </aside>
         <section className="stage">
-          <div className="stage-scroll">
+          <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={screen.say}>
+          <p className="pane-tag">Story</p>
           <article className="say">
             <p className="kicker">{screen.kicker}</p>
             <h2 data-testid="title">{screen.title}</h2>
@@ -210,9 +233,9 @@ export function CoachScreen({ code }: { code: string }) {
             </div>
           ) : null}
           {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
-          <TableLook screen={screen} playerName={state.players.find((player) => player.id === playerId)?.name ?? name} />
-          </div>
-          <div className={`dock${screen.active ? " live" : ""}`} data-testid="dock">
+          </ScrollPane>
+          <ScrollPane className={`dock button-pane${screen.active ? " live" : ""}`} testId="dock" more="More buttons below" watch={`${screen.title}:${screen.choices.length}:${screen.pad?.label ?? ""}`}>
+            <p className="pane-tag">Buttons</p>
             <p className={`cue${screen.active ? " yours" : ""}`} data-testid="cue">
               <i />
               {busy ? "Sending that tap…" : screen.active ? "Your turn. Tap a button." : screen.wait ? screen.wait : screen.over ? "The fight is over." : "Watch the table."}
@@ -240,15 +263,10 @@ export function CoachScreen({ code }: { code: string }) {
               </div>
             ) : null}
             {screen.pad ? <Pad screen={screen} disabled={busy} onPick={(value) => void send(padAction(screen, playerId, value))} /> : null}
-            {screen.undo ? (
-              <button className="ghost" type="button" disabled={busy} onClick={() => void send(screen.undo as Action)}>
-                Undo last tap
-              </button>
-            ) : null}
             {screen.over ? (
               <Link href="/" className="primary back-link">All games</Link>
             ) : null}
-          </div>
+          </ScrollPane>
         </section>
       </div>
     </main>
@@ -277,6 +295,63 @@ function Pad({
         </button>
       ))}
     </div>
+  )
+}
+
+function ScrollPane({
+  className,
+  testId,
+  more,
+  watch,
+  children,
+}: {
+  className: string
+  testId: string
+  more: string
+  watch: string
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [hasMore, setHasMore] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const check = () => {
+      const leftover = el.scrollHeight - el.scrollTop - el.clientHeight
+      setHasMore(leftover > 12)
+    }
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    for (const child of el.children) observer.observe(child)
+    el.addEventListener("scroll", check, { passive: true })
+    return () => {
+      observer.disconnect()
+      el.removeEventListener("scroll", check)
+    }
+  }, [watch])
+
+  return (
+    <div ref={ref} className={`${className}${hasMore ? " has-more" : ""}`} data-testid={testId}>
+      {children}
+      {hasMore ? <p className="more-hint">{more}</p> : null}
+    </div>
+  )
+}
+
+function UndoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 8H4v4M4.5 8.5A8 8 0 1 1 6 18"
+      />
+    </svg>
   )
 }
 

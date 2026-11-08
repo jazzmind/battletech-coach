@@ -6,8 +6,21 @@ import type { Screen } from "@/lib/game/types"
 
 const KEY = "mech-coach-xai-key"
 
-export function TableLook({ screen, playerName }: { screen: Screen; playerName: string }) {
+export function TableLook({
+  screen,
+  playerName,
+  onOpenChange,
+}: {
+  screen: Screen
+  playerName: string
+  onOpenChange?: (open: boolean) => void
+}) {
   const [open, setOpen] = useState(false)
+
+  function setLookOpen(next: boolean) {
+    setOpen(next)
+    onOpenChange?.(next)
+  }
   const [storedKey, setStoredKey] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
   const [reply, setReply] = useState<string | null>(null)
@@ -106,15 +119,20 @@ export function TableLook({ screen, playerName }: { screen: Screen; playerName: 
     await sendPhoto(blob)
   }
 
-  if (!open) {
-    return (
-      <button className="ghost look-open" type="button" data-testid="look-open" onClick={() => setOpen(true)}>
-        Look at my side
-      </button>
-    )
-  }
-
   return (
+    <>
+      <button
+        className={`icon-btn${open ? " pressed" : ""}`}
+        type="button"
+        data-testid="look-open"
+        aria-label="Look at my side"
+        title="Look at my side"
+        aria-pressed={open}
+        onClick={() => setLookOpen(!open)}
+      >
+        <LookIcon />
+      </button>
+      {open ? (
     <section className="look" data-testid="look">
       <p className="kicker">A look, not a referee</p>
       <p>The cards, the dice, and the tape still decide.</p>
@@ -174,10 +192,26 @@ export function TableLook({ screen, playerName }: { screen: Screen; playerName: 
       )}
       {error ? <p className="error">{error}</p> : null}
       {reply ? <p className="look-reply" data-testid="look-reply">{reply}</p> : null}
-      <button className="ghost" type="button" onClick={() => { stopCamera(); setOpen(false) }}>
+      <button className="ghost" type="button" onClick={() => { stopCamera(); setLookOpen(false) }}>
         Close
       </button>
     </section>
+      ) : null}
+    </>
+  )
+}
+
+function LookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   )
 }
 
