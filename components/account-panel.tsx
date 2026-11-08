@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { authClient } from "@/lib/auth-client"
 
-export function AccountPanel({ compact = false }: { compact?: boolean }) {
+export function AuthPanel({ compact = false, onSent }: { compact?: boolean; onSent?: (email: string) => void }) {
   const { data: session, isPending } = authClient.useSession()
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
@@ -23,6 +23,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
       return
     }
     setSent(true)
+    onSent?.(email.trim())
   }
 
   async function addPasskey() {
@@ -30,7 +31,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
     setError(null)
     const result = await authClient.passkey.addPasskey({ name: "This iPad" })
     setBusy(false)
-    if (result.error) setError(result.error.message || "This device did not save a passkey.")
+    if (result.error) setError("This device did not save a passkey.")
   }
 
   async function usePasskey() {
@@ -38,7 +39,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
     setError(null)
     const result = await authClient.signIn.passkey()
     setBusy(false)
-    if (result.error) setError(result.error.message || "This device has no passkey yet.")
+    if (result.error) setError("This device has no passkey yet. Use the email link first.")
   }
 
   if (isPending) return <p className="kit">Checking sign-in.</p>
@@ -47,7 +48,7 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
       <section className="account" data-testid="account">
         <p>Signed in as {session.user.email}.</p>
         <button type="button" disabled={busy} onClick={() => void addPasskey()}>
-          Use this iPad next time
+          Save a passkey on this device
         </button>
         <button className="ghost" type="button" disabled={busy} onClick={() => void authClient.signOut()}>
           Sign out
@@ -58,7 +59,12 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
   }
   return (
     <section className="account" data-testid="account">
-      {compact ? <p>Sign in with your email to check the table.</p> : <p>Sign in if you want the camera to check the table.</p>}
+      {compact ? <p>Sign in with your email to check the table.</p> : (
+        <>
+          <h3>Sign in or create an account</h3>
+          <p>Needed for the camera check. No password: we email you a link, and a new email gets a new account.</p>
+        </>
+      )}
       <label>
         Email
         <input
@@ -73,10 +79,12 @@ export function AccountPanel({ compact = false }: { compact?: boolean }) {
         Email me a link
       </button>
       <button className="ghost" type="button" disabled={busy} onClick={() => void usePasskey()}>
-        Use the passkey on this device
+        Sign in with a passkey
       </button>
       {sent ? <p>Check your email. The link works once.</p> : null}
       {error ? <p className="error">{error}</p> : null}
     </section>
   )
 }
+
+export const AccountPanel = AuthPanel

@@ -1,11 +1,11 @@
 import type { Screen } from "@/lib/game/types"
 
-export function TableMap({ map }: { map: NonNullable<Screen["map"]> }) {
+export function TableMap({ map, compact = false }: { map: NonNullable<Screen["map"]>; compact?: boolean }) {
   const { width, depth, zoneDepth } = map
   const lines: number[] = []
   for (let inch = 0; inch <= Math.max(width, depth); inch += 6) lines.push(inch)
   return (
-    <figure className="table-map" data-testid="table-map">
+    <div className={`table-map${compact ? " compact" : ""}`} data-testid="table-map">
       <svg viewBox={`-4 -6 ${width + 8} ${depth + 12}`} role="img" aria-label="Table layout in inches">
         <rect x={0} y={0} width={width} height={depth} className="mat" />
         <rect x={0} y={0} width={width} height={zoneDepth} className="zone" />
@@ -65,7 +65,7 @@ export function TableMap({ map }: { map: NonNullable<Screen["map"]> }) {
           {map.guest}
         </text>
       </svg>
-      <figcaption>Each square is 6 inches. Home edges are the shaded strips.</figcaption>
-    </figure>
+      {compact ? null : <p className="map-note">Each square is 6 inches. Home edges are the shaded strips.</p>}
+    </div>
   )
 }

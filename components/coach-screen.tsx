@@ -15,10 +15,11 @@ import { DraftPanel } from "./draft-panel"
 import { autoLines, type AudioSettings } from "@/lib/voice/auto"
 import { GameToolbar } from "./game-toolbar"
 import { Mark } from "./mark"
+import { Minimap } from "./minimap"
 import { Modal } from "./modal"
 import { ReadAloud } from "./read-aloud"
-import { TableCheck } from "./table-check"
-import { TableLook } from "./table-look"
+import { StoryTheater } from "./story-theater"
+import { loadStoryView, saveStoryView, StoryViewToggle, type StoryView } from "./story-view-toggle"
 import { TableMap } from "./table-map"
 
 export function CoachScreen({ code }: { code: string }) {
@@ -29,17 +30,25 @@ export function CoachScreen({ code }: { code: string }) {
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState("")
   const [poolFor, setPoolFor] = useState<string | null>(null)
-  const [lookOpen, setLookOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
   const [mechsOpen, setMechsOpen] = useState(false)
+  const [cameraAsk, setCameraAsk] = useState(0)
   const [audio, setAudio] = useState<AudioSettings>({ story: false, steps: false })
+  const [view, setView] = useState<StoryView>("watch")
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
     const saved = localStorage.getItem("mech-coach-name")
     if (saved) setName(saved)
     setAudio({ story: localStorage.getItem(STORY_KEY) === "1", steps: localStorage.getItem(STEPS_KEY) === "1" })
+    setView(loadStoryView())
   }, [])
+
+  function changeView(next: StoryView) {
+    stop()
+    saveStoryView(next)
+    setView(next)
+  }
 
   function changeAudio(next: AudioSettings) {
     localStorage.setItem(STORY_KEY, next.story ? "1" : "0")
@@ -172,6 +181,15 @@ export function CoachScreen({ code }: { code: string }) {
   const screen = present(state, playerId)
   const showDock = !screen.over && (screen.choices.length > 0 || Boolean(screen.pad) || Boolean(screen.wait) || Boolean(error))
   const playerName = state.players.find((player) => player.id === playerId)?.name ?? name
+  const storyLines = screen.voice?.mission ?? screen.voice?.interlude ?? screen.voice?.ending
+  const hasStory = Boolean(storyLines && storyLines.length > 0)
+  const watching = view === "watch" && hasStory
+  const storyNames = {
+    innerSphere: state.players.find((player) => player.faction === "innerSphere")?.name ?? "the Lyrans",
+    clan: state.players.find((player) => player.faction === "clan")?.name ?? "the Falcons",
+  }
+  const playLabel = screen.voice?.mission ? "Play briefing" : screen.voice?.interlude ? "Play the radio" : "Play the ending"
+  const showMinimap = Boolean(screen.map && screen.map.where !== "stage")
   return (
     <main className="wrap table">
       <header className="top">
@@ -181,6 +199,21 @@ export function CoachScreen({ code }: { code: string }) {
             <h1>Table Coach</h1>
             <p>{screen.hud.scenario}</p>
           </div>
+        </div>
+        <div className="command-bar">
+          <GameToolbar
+            code={screen.code}
+            busy={busy}
+            undo={screen.undo}
+            hasMap={Boolean(screen.map)}
+            audio={audio}
+            screen={screen}
+            playerName={playerName}
+            cameraAsk={cameraAsk}
+            onUndo={() => void send(screen.undo as Action)}
+            onMap={() => setMapOpen(true)}
+            onAudio={changeAudio}
+          />
         </div>
         <div className="code-pill" data-testid="room-code">{screen.code}</div>
       </header>
@@ -203,28 +236,39 @@ export function CoachScreen({ code }: { code: string }) {
             </div>
           ))}
           </div>
-          <GameToolbar
-            code={screen.code}
-            busy={busy}
-            undo={screen.undo}
-            hasMap={Boolean(screen.map)}
-            audio={audio}
-            onUndo={() => void send(screen.undo as Action)}
-            onMap={() => setMapOpen(true)}
-            onLook={() => setLookOpen(true)}
-            onAudio={changeAudio}
-          />
-          <AutoRead screen={screen} audio={audio} />
+          <AutoRead screen={screen} audio={audio} view={view} />
         </aside>
         <section className="stage">
           <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={`${screen.say}:${screen.tip?.title ?? ""}:${screen.mission?.chapter ?? ""}`}>
-          <p className="pane-tag">Story</p>
-          <article className="say">
-            <p className="kicker">{screen.kicker}</p>
+          {hasStory ? (
+            <div className="story-bar">
+              <p className="kicker">{screen.kicker}</p>
+              <StoryViewToggle view={view} onChange={changeView} />
+            </div>
+          ) : (
+            <p className="pane-tag">Story</p>
+          )}
+          <article className={`say${watching ? " story-compact" : ""}`}>
+            {hasStory ? null : <p className="kicker">{screen.kicker}</p>}
             <h2 data-testid="title">{screen.title}</h2>
-            <p className="aloud" data-testid="say">{screen.say}</p>
+            {watching ? null : <p className="aloud" data-testid="say">{screen.say}</p>}
           </article>
-          {screen.interlude ? (
+          {watching && storyLines ? (
+            <StoryTheater
+              key={`${screen.kicker}|${screen.title}|${screen.ending ?? ""}|${screen.interlude?.title ?? ""}`}
+              lines={storyLines}
+              clip={screen.voice?.mission ? screen.voice.clip : undefined}
+              clipAt={screen.voice?.mission ? screen.voice.clipAt : undefined}
+              clipSpan={screen.voice?.mission ? screen.voice.clipSpan : undefined}
+              scene={screen.voice?.scene}
+              names={storyNames}
+              playLabel={playLabel}
+              autoplay={audio.story}
+              active={watching}
+              onRead={() => changeView("read")}
+            />
+          ) : null}
+          {!watching && screen.interlude ? (
             <section className="mission interlude" data-testid="interlude">
               <ReadAloud lines={screen.voice?.interlude} label="Play the radio" testId="read-interlude" />
               <p className="kicker">{screen.interlude.title}</p>
@@ -233,17 +277,19 @@ export function CoachScreen({ code }: { code: string }) {
           ) : null}
           {screen.mission ? (
             <section className="mission" data-testid="mission">
-              <ReadAloud lines={screen.voice?.mission} label="Read the briefing" testId="read-briefing" />
-              <BriefingClip id={screen.voice?.clip} from={screen.voice?.clip?.endsWith(".clan") ? "Galaxy Command" : "Garrison Command"} />
+              {watching ? null : <ReadAloud lines={screen.voice?.mission} label="Read the briefing" testId="read-briefing" />}
+              {watching ? null : <BriefingClip id={screen.voice?.clip} from={screen.voice?.clip?.endsWith(".clan") ? "Galaxy Command" : "Garrison Command"} />}
               <p className="kicker">{screen.mission.unit}</p>
               <p><strong>Goal. </strong>{screen.mission.goal}</p>
-              <p><strong>Orders. </strong>{screen.mission.orders}</p>
-              <p className="kicker">How to think</p>
-              <ol>
-                {screen.mission.plan.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ol>
+              {watching ? null : <p><strong>Orders. </strong>{screen.mission.orders}</p>}
+              {watching ? null : <p className="kicker">How to think</p>}
+              {watching ? null : (
+                <ol>
+                  {screen.mission.plan.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ol>
+              )}
             </section>
           ) : null}
           {screen.lesson ? (
@@ -260,7 +306,11 @@ export function CoachScreen({ code }: { code: string }) {
             </aside>
           ) : null}
           {screen.map?.where === "stage" ? <TableMap map={screen.map} /> : null}
-          {screen.check ? <TableCheck mech={screen.check.mech} /> : null}
+          {screen.check ? (
+            <button type="button" className="camera-cta" onClick={() => setCameraAsk((value) => value + 1)}>
+              Check the spot with the camera
+            </button>
+          ) : null}
           {screen.draft ? (
             <DraftPanel
               draft={screen.draft}
@@ -269,7 +319,7 @@ export function CoachScreen({ code }: { code: string }) {
               onField={(variantIds) => void send({ type: "field", playerId, variantIds })}
             />
           ) : null}
-          {screen.ending ? (
+          {!watching && screen.ending ? (
             <div className="ending" data-testid="ending">
               <ReadAloud lines={screen.voice?.ending} label="Read the ending" testId="read-ending" />
               <p>{screen.ending}</p>
@@ -338,6 +388,8 @@ export function CoachScreen({ code }: { code: string }) {
           {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
           </ScrollPane>
         </section>
+        {showDock || showMinimap ? (
+        <div className="rail">
         {showDock ? (
           <ScrollPane className={`dock button-pane${screen.active ? " live" : ""}`} testId="dock" more="More buttons below" watch={`${screen.title}:${screen.choices.length}:${screen.pad?.label ?? ""}`}>
             <p className={`cue${screen.active ? " yours" : ""}`} data-testid="cue">
@@ -369,10 +421,12 @@ export function CoachScreen({ code }: { code: string }) {
             {screen.pad ? <Pad screen={screen} disabled={busy} onPick={(value) => void send(padAction(screen, playerId, value))} /> : null}
           </ScrollPane>
         ) : null}
+        {showMinimap && screen.map ? <Minimap map={screen.map} onOpen={() => setMapOpen(true)} /> : null}
+        </div>
+        ) : null}
       </div>
-      <TableLook screen={screen} playerName={playerName} open={lookOpen} onClose={() => setLookOpen(false)} />
       {screen.map ? (
-        <Modal open={mapOpen} title="Battlefield map" onClose={() => setMapOpen(false)}>
+        <Modal open={mapOpen} title="Battlefield map" wide onClose={() => setMapOpen(false)}>
           <TableMap map={screen.map} />
         </Modal>
       ) : null}
@@ -391,15 +445,15 @@ export function CoachScreen({ code }: { code: string }) {
 const STORY_KEY = "mech-coach-story-audio"
 const STEPS_KEY = "mech-coach-step-audio"
 
-function AutoRead({ screen, audio }: { screen: Screen; audio: AudioSettings }) {
+function AutoRead({ screen, audio, view }: { screen: Screen; audio: AudioSettings; view: StoryView }) {
   const key = `${screen.kicker}|${screen.title}|${screen.say}|${screen.interlude?.title ?? ""}|${screen.ending ?? ""}`
   const linesRef = useRef<VoiceLine[]>([])
-  linesRef.current = autoLines(screen, audio)
+  linesRef.current = autoLines(screen, audio, view)
 
   useEffect(() => {
     if (linesRef.current.length === 0) return
     void play("auto", linesRef.current)
-  }, [audio.story, audio.steps, key])
+  }, [audio.story, audio.steps, key, view])
 
   useEffect(() => () => stop(), [])
   return null

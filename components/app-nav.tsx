@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/join", label: "Join" },
   { href: "/create", label: "Create" },
   { href: "/history", label: "History" },
+  { href: "/pilot", label: "Pilot" },
 ]
 
 export function AppNav() {

@@ -44,4 +44,10 @@ describe("story audio and step reading", () => {
     assert.equal(both[0].who, "coach")
     assert.equal(both.length, story.length + 1)
   })
+
+  it("keeps the story off the speaker while Watch is showing it", () => {
+    const screen = present(solo(), "host")
+    assert.deepEqual(autoLines(screen, STORY, "watch"), [])
+    assert.deepEqual(autoLines(screen, BOTH, "watch").map((line) => line.who), ["coach"])
+  })
 })

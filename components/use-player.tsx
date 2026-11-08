@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { Faction } from "@/lib/game/types"
+import { RadioCards } from "./radio-cards"
 
 const NAME_KEY = "mech-coach-name"
 const FACTION_KEY = "mech-coach-faction"
@@ -9,12 +10,14 @@ const FACTION_KEY = "mech-coach-faction"
 export function usePlayer() {
   const [name, setNameState] = useState("")
   const [faction, setFactionState] = useState<Faction>("innerSphere")
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem(NAME_KEY)
     if (saved) setNameState(saved)
     const side = localStorage.getItem(FACTION_KEY)
     if (side === "clan" || side === "innerSphere") setFactionState(side)
+    setReady(true)
   }, [])
 
   function setName(next: string) {
@@ -27,7 +30,7 @@ export function usePlayer() {
     localStorage.setItem(FACTION_KEY, next)
   }
 
-  return { name, setName, faction, setFaction }
+  return { name, setName, faction, setFaction, ready }
 }
 
 export function FactionPicker({
@@ -38,13 +41,15 @@ export function FactionPicker({
   setFaction: (faction: Faction) => void
 }) {
   return (
-    <div className="sides" role="group" aria-label="Your faction">
-      <button type="button" aria-pressed={faction === "innerSphere"} onClick={() => setFaction("innerSphere")}>
-        Inner Sphere
-      </button>
-      <button type="button" aria-pressed={faction === "clan"} onClick={() => setFaction("clan")}>
-        Clan
-      </button>
-    </div>
+    <RadioCards
+      legend="Faction"
+      name="faction"
+      value={faction}
+      onChange={setFaction}
+      options={[
+        { value: "innerSphere", title: "Inner Sphere", subtitle: "Lyran Commonwealth · Twycross Garrison", image: "/art/pilots/lyran.jpg" },
+        { value: "clan", title: "Clan", subtitle: "Clan Jade Falcon", image: "/art/pilots/falcon.jpg" },
+      ]}
+    />
   )
 }

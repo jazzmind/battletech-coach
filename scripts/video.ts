@@ -20,7 +20,7 @@ import { spokenText } from "../lib/game/script"
 import type { Faction } from "../lib/game/types"
 import { CAST } from "../lib/voice/cast"
 import { clipId } from "../lib/voice/key"
-import { ordersLines } from "../lib/voice/lines"
+import { everyLine, ordersLines, voicedScenarios } from "../lib/voice/lines"
 import type { Caption, Manifest } from "../lib/voice/manifest"
 import { ROOT, download, heygen, loadEnv, sleep } from "./heygen"
 
@@ -95,7 +95,7 @@ async function blob(name: string, body: Buffer, contentType: string): Promise<st
 }
 
 const portraits = new Map<string, string>()
-async function portraitUrl(who: "garrison" | "galaxy"): Promise<string> {
+async function portraitUrl(who: "garrison" | "galaxy" | "lyran" | "falcon"): Promise<string> {
   const cached = portraits.get(who)
   if (cached) return cached
   const url = await blob(`pilots/${who}.jpg`, readFileSync(path.join(ROOT, "public/art/pilots", `${who}.jpg`)), "image/jpeg")
@@ -146,6 +146,13 @@ async function prepare(job: Job): Promise<Pending> {
 }
 
 // HeyGen's own thumbnail is the portrait cropped to the 720p 4:5 frame; make the same one locally.
+function cropPoster(who: string): Buffer {
+  const jpg = path.join(PENDING_DIR, `${who}-poster.jpg`)
+  const frame = "scale=720:900:force_original_aspect_ratio=increase,crop=720:900"
+  execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", path.join(ROOT, "public/art/pilots", `${who}.jpg`), "-vf", frame, "-q:v", "3", jpg])
+  return readFileSync(jpg)
+}
+
 function portraitPoster(id: string): Buffer {
   const who = PORTRAIT[id.split(".").pop() as Faction]
   const jpg = path.join(PENDING_DIR, `${id}.jpg`)
@@ -211,8 +218,86 @@ async function render(job: Job) {
   }
 }
 
+const LINE_MOTION: Record<"lyran" | "falcon", string> = {
+  lyran: "A Lyran MechWarrior speaking on a cockpit radio. Focused, small head movement, no hand gestures.",
+  falcon: "A proud Clan Jade Falcon warrior issuing a formal challenge over the radio. Chin up, steady gaze, no hand gestures.",
+}
+
+type LineJob = { key: string; who: "lyran" | "falcon"; text: string; file: string; seconds: number }
+
+function lineJobs(manifest: Manifest): LineJob[] {
+  const jobs: LineJob[] = []
+  for (const item of everyLine(voicedScenarios())) {
+    if (item.line.who !== "lyran" && item.line.who !== "falcon") continue
+    const recording = manifest.lines[item.key]
+    if (!recording) continue
+    jobs.push({ key: item.key, who: item.line.who, text: item.spoken, file: recording.file, seconds: recording.seconds })
+  }
+  return jobs
+}
+
+async function prepareLine(job: LineJob) {
+  const audioUrl = await blob(`lines/${job.key}.mp3`, readFileSync(path.join(ROOT, "public", job.file.replace(/^\//, ""))), "audio/mpeg")
+  const pending = {
+    id: `line.${job.key}`,
+    title: `Line ${job.who} ${job.key}`,
+    image: { type: "url" as const, url: await portraitUrl(job.who) },
+    audioUrl,
+    seconds: job.seconds,
+    captions: [{ text: job.text, start: 0, end: round(job.seconds) }],
+    who: job.who,
+  }
+  mkdirSync(PENDING_DIR, { recursive: true })
+  writeFileSync(path.join(PENDING_DIR, `${pending.id}.json`), `${JSON.stringify(pending, null, 2)}\n`)
+  console.log(JSON.stringify({
+    id: pending.id,
+    title: pending.title,
+    image: pending.image,
+    audioUrl: pending.audioUrl,
+    aspectRatio: LOOK.aspectRatio,
+    fit: LOOK.fit,
+    resolution: LOOK.resolution,
+    expressiveness: LOOK.expressiveness,
+    motionPrompt: LINE_MOTION[job.who],
+  }))
+}
+
+async function saveLine(id: string, videoUrl: string, posterUrl?: string) {
+  const key = id.startsWith("line.") ? id.slice(5) : id
+  const file = path.join(PENDING_DIR, `line.${key}.json`)
+  if (!existsSync(file)) throw new Error(`No prepared speech for ${id}. Run npm run video -- --lines --prepare --only ${key} first.`)
+  const pending = JSON.parse(readFileSync(file, "utf8")) as Pending & { who?: "lyran" | "falcon" }
+  const url = await blob(`lines/${key}.mp4`, await download(videoUrl), "video/mp4")
+  const still = posterUrl ? await download(posterUrl) : cropPoster(pending.who ?? "lyran")
+  const poster = await blob(`lines/${key}.jpg`, still, "image/jpeg")
+  const manifest = readManifest()
+  manifest.lineClips = manifest.lineClips ?? {}
+  manifest.lineClips[key] = { url, seconds: round(pending.seconds), poster, captions: pending.captions }
+  const lineClips = Object.fromEntries(Object.entries(manifest.lineClips).sort(([a], [b]) => a.localeCompare(b)))
+  writeFileSync(MANIFEST_FILE, `${JSON.stringify({ ...manifest, lineClips }, null, 2)}\n`)
+  console.log(`  ${key}: saved ${url}`)
+}
+
 async function main() {
   loadEnv()
+  if (args.includes("--lines")) {
+    const manifest = readManifest()
+    const jobs = lineJobs(manifest).filter((job) => !only || job.key === only || `line.${job.key}` === only)
+    const todo = jobs.filter((job) => only || !manifest.lineClips?.[job.key])
+    console.log(`${jobs.length} speaker lines, ${todo.length} clips to render.`)
+    if (!args.includes("--prepare") && !args.includes("--save")) {
+      for (const job of todo) console.log(`  ${job.key.padEnd(28)} ${job.text.slice(0, 90)}`)
+      return
+    }
+    if (args.includes("--save")) {
+      const [id, videoUrl, posterUrl] = args.slice(args.indexOf("--save") + 1)
+      if (!id || !videoUrl) throw new Error("Usage: npm run video -- --lines --save <id> <videoUrl> [posterUrl]")
+      return saveLine(id, videoUrl, posterUrl)
+    }
+    if (!process.env.PUBLIC_BLOB_READ_WRITE_TOKEN) throw new Error("PUBLIC_BLOB_READ_WRITE_TOKEN is not set in .env.local.")
+    for (const job of todo) await prepareLine(job)
+    return
+  }
   if (args.includes("--save")) {
     const [id, videoUrl, posterUrl] = args.slice(args.indexOf("--save") + 1)
     if (!id || !videoUrl) throw new Error("Usage: npm run video -- --save <id> <videoUrl> [posterUrl]")

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { decideSee } from "./see"
+import { decideSee, describeSeen } from "./see"
 
 describe("camera allowance", () => {
   it("allows a normal day", () => {
@@ -22,6 +22,11 @@ describe("camera allowance", () => {
     const banned = decideSee({ flag: "blocked", dayCount: 3, sinceLastMs: 20_000 })
     assert.equal(banned.result, "block")
     assert.equal(banned.flag, "blocked")
+  })
+
+  it("names the mechs it can see and the ones it cannot", () => {
+    const text = describeSeen(["Warhammer", "Timber Wolf", "Wasp"], [0.9, 0.7, 0.2])
+    assert.equal(text, "I can see the Warhammer and the Timber Wolf. I can't find the Wasp.")
   })
 
   it("refuses a photo that arrives inside 8 seconds", () => {

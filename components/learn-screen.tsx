@@ -7,19 +7,29 @@ import { CATALOG, GROUP_LABEL } from "@/lib/game/scenarios"
 import type { Group } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { loadRecaps } from "@/lib/recaps"
-import { AccountPanel } from "./account-panel"
 import { AppFrame } from "./app-frame"
-import { FactionPicker, usePlayer } from "./use-player"
+import { PilotBadge } from "./pilot-badge"
+import { RadioCards } from "./radio-cards"
+import { usePlayer } from "./use-player"
 
 const GROUPS: Group[] = ["teaching", "real", "graduation", "missions"]
 
 export function LearnScreen() {
   const router = useRouter()
-  const { name, setName, faction, setFaction } = usePlayer()
+  const { name, faction, ready } = usePlayer()
   const [badges, setBadges] = useState<Record<string, "Victory" | "Fought">>({})
   const [busy, setBusy] = useState(false)
   const [alone, setAlone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setAlone(localStorage.getItem("mech-coach-opponent") === "coach")
+  }, [])
+
+  function chooseOpponent(value: "pilot" | "coach") {
+    setAlone(value === "coach")
+    localStorage.setItem("mech-coach-opponent", value)
+  }
 
   useEffect(() => {
     const next: Record<string, "Victory" | "Fought"> = {}
@@ -51,16 +61,18 @@ export function LearnScreen() {
   return (
     <AppFrame title="Learn" lede="The Twycross campaign. Eleven chapters from the box, one new rule each, then voiced missions on fixed maps.">
       <section className="panel">
-        <label>
-          Pilot name
-          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} autoComplete="given-name" />
-        </label>
-        <FactionPicker faction={faction} setFaction={setFaction} />
-        <button type="button" aria-pressed={alone} onClick={() => setAlone((value) => !value)}>
-          {alone ? "Play alone, the coach takes the other side" : "Two players, one code"}
-        </button>
+        <PilotBadge next="/learn" />
+        <RadioCards
+          legend="Opponent"
+          name="opponent"
+          value={alone ? "coach" : "pilot"}
+          onChange={chooseOpponent}
+          options={[
+            { value: "pilot", title: "Another pilot", subtitle: "Two screens. Share a battle code." },
+            { value: "coach", title: "The coach", subtitle: "Play alone. The coach runs the other side." },
+          ]}
+        />
         <p className="kit">Inner Sphere pilots hold Twycross for the Lyran Commonwealth. Clan pilots fight for the Jade Falcons.</p>
-        <AccountPanel />
       </section>
       {GROUPS.map((group) => (
         <section className="scenario-group" key={group}>
@@ -76,11 +88,11 @@ export function LearnScreen() {
               <button
                 type="button"
                 className="start"
-                disabled={busy || name.trim().length === 0}
-                title={name.trim().length === 0 ? "Enter a pilot name first" : undefined}
+                disabled={busy || !ready || name.trim().length === 0}
+                title={name.trim().length === 0 ? "Set up your pilot first" : undefined}
                 onClick={() => void start(scenario.id)}
               >
-                {alone ? "Play alone" : "Deploy"}
+                {alone ? "Deploy solo" : "Deploy"}
               </button>
             </article>
           ))}

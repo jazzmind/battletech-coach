@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth"
+import { betterAuth, type BetterAuthOptions } from "better-auth"
 import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins/magic-link"
 import { passkey } from "@better-auth/passkey"
@@ -8,10 +8,10 @@ export function authConfigured(): boolean {
   return Boolean(process.env.DATABASE_URL && process.env.BETTER_AUTH_SECRET)
 }
 
-function buildAuth(secret: string, databaseUrl: string) {
+export function authOptions(secret: string, databaseUrl: string): BetterAuthOptions {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
-  return betterAuth({
+  return {
     secret,
     baseURL: process.env.BETTER_AUTH_URL || undefined,
     database: new Pool({ connectionString: databaseUrl }),
@@ -21,6 +21,7 @@ function buildAuth(secret: string, databaseUrl: string) {
     rateLimit: url && token ? { enabled: true, storage: "secondary-storage" } : undefined,
     plugins: [
       magicLink({
+        disableSignUp: false,
         sendMagicLink: async ({ email, url: link }) => {
           await sendLink(email, link)
         },
@@ -32,7 +33,11 @@ function buildAuth(secret: string, databaseUrl: string) {
       }),
       nextCookies(),
     ],
-  })
+  }
+}
+
+function buildAuth(secret: string, databaseUrl: string) {
+  return betterAuth(authOptions(secret, databaseUrl))
 }
 
 let cached: ReturnType<typeof buildAuth> | null = null
@@ -63,7 +68,10 @@ async function sendLink(email: string, link: string) {
       text: `Tap this link to sign in. It works once, for a few minutes.\n\n${link}`,
     }),
   })
-  if (!response.ok) throw new Error("The sign-in email did not send.")
+  if (!response.ok) {
+    const detail = await response.text()
+    throw new Error(detail || "The sign-in email did not send.")
+  }
 }
 
 function redisStorage() {

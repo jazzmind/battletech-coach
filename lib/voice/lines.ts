@@ -16,6 +16,10 @@ export function briefingLines(scenario: Scenario, faction: Faction): Line[] {
   ]
 }
 
+export function ordersSpan(scenario: Scenario, faction: Faction): { clipAt: number; clipSpan: number } {
+  return { clipAt: toLines(scenario.story).length + 1, clipSpan: 1 + scenario.sides[faction].plan.length }
+}
+
 export function ordersLines(scenario: Scenario, faction: Faction): Line[] {
   const side = scenario.sides[faction]
   const command = faction === "innerSphere" ? garrison : galaxy

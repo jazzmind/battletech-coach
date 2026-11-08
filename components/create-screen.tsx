@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation"
 import { BOX_INVENTORY, TERRAIN_LABEL, type ObjectiveType, type PickupInventory, type TableSize, type TerrainKind } from "@/lib/scenario-gen/layout"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { AppFrame } from "./app-frame"
-import { FactionPicker, usePlayer } from "./use-player"
+import { PilotBadge } from "./pilot-badge"
+import { usePlayer } from "./use-player"
 
 const TERRAIN_KEYS = Object.keys(BOX_INVENTORY) as TerrainKind[]
 
 export function CreateScreen() {
   const router = useRouter()
-  const { name, setName, faction, setFaction } = usePlayer()
+  const { name, faction, ready } = usePlayer()
   const [budget, setBudget] = useState(250)
   const [table, setTable] = useState<TableSize>("3x4")
   const [objective, setObjective] = useState<ObjectiveType>("center")
@@ -64,11 +65,7 @@ export function CreateScreen() {
       lede="A pickup battle. Import your force from Jeff's Tools or Terminal, or type in the cards. The coach lays out a battlefield using only the terrain you own."
     >
       <section className="panel">
-        <label>
-          Pilot name
-          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} />
-        </label>
-        <FactionPicker faction={faction} setFaction={setFaction} />
+        <PilotBadge next="/create" />
         <p className="group-title">Point budget per side</p>
         <div className="sides" role="group" aria-label="Point budget">
           {[150, 250, 350].map((value) => (
@@ -115,7 +112,7 @@ export function CreateScreen() {
             </label>
           ))}
         </div>
-        <button className="primary" type="button" disabled={busy || name.trim().length === 0} onClick={() => void createPickup()}>
+        <button className="primary" type="button" disabled={busy || !ready || name.trim().length === 0} title={name.trim().length === 0 ? "Set up your pilot first" : undefined} onClick={() => void createPickup()}>
           Issue the challenge
         </button>
         {error ? <p className="error">{error}</p> : null}

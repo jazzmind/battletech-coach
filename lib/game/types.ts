@@ -260,6 +260,9 @@ export type Screen = {
     interlude?: VoiceLine[]
     ending?: VoiceLine[]
     clip?: string
+    clipAt?: number
+    clipSpan?: number
+    scene?: string
   }
   active: boolean
   wait?: string

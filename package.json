@@ -8,7 +8,8 @@
     "voices": "tsx scripts/voices.ts",
     "voice": "tsx scripts/voice.ts",
     "video": "tsx scripts/video.ts",
-    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/game/solo.test.ts lib/game/script.test.ts lib/game/missions.test.ts lib/voice/auto.test.ts lib/see.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
+    "auth:migrate": "tsx scripts/auth-migrate.ts",
+    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/game/solo.test.ts lib/game/script.test.ts lib/game/missions.test.ts lib/voice/auto.test.ts lib/voice/theater.test.ts lib/see.test.ts lib/game/faction.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.18",

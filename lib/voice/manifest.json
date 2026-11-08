@@ -2277,5 +2277,79 @@
         }
       ]
     }
+  },
+  "lineClips": {
+    "falcon-1cigfuilk2j": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-1cigfuilk2j.mp4",
+      "seconds": 2.54,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-1cigfuilk2j.jpg",
+      "captions": [
+        {
+          "text": "You fight well for a Spheroid, Lieutenant.",
+          "start": 0,
+          "end": 2.54
+        }
+      ]
+    },
+    "falcon-1pjfxxsq19l": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-1pjfxxsq19l.mp4",
+      "seconds": 6.19,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-1pjfxxsq19l.jpg",
+      "captions": [
+        {
+          "text": "Star Commander here. Fire Moth, Timber Wolf, advance. The town will be ours by nightfall.",
+          "start": 0,
+          "end": 6.19
+        }
+      ]
+    },
+    "falcon-bpomwdf1ie": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-bpomwdf1ie.mp4",
+      "seconds": 7.39,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-bpomwdf1ie.jpg",
+      "captions": [
+        {
+          "text": "I am the Star Commander of Clan Jade Falcon. What warrior defends this world? Meet me, one against one.",
+          "start": 0,
+          "end": 7.39
+        }
+      ]
+    },
+    "falcon-xygsy4bb43": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-xygsy4bb43.mp4",
+      "seconds": 4.07,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/falcon-xygsy4bb43.jpg",
+      "captions": [
+        {
+          "text": "Star Commander here. Pouncer, Fire Moth, take that beacon.",
+          "start": 0,
+          "end": 4.07
+        }
+      ]
+    },
+    "lyran-1yyi0bvht52": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/lyran-1yyi0bvht52.mp4",
+      "seconds": 3.71,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/lyran-1yyi0bvht52.jpg",
+      "captions": [
+        {
+          "text": "Twycross Garrison. One Warhammer. I will meet you.",
+          "start": 0,
+          "end": 3.71
+        }
+      ]
+    },
+    "lyran-9wyzqd64ua": {
+      "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/lyran-9wyzqd64ua.mp4",
+      "seconds": 5.04,
+      "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/lines/lyran-9wyzqd64ua.jpg",
+      "captions": [
+        {
+          "text": "Garrison, the Warhammer is still standing. The Falcon is pulling back.",
+          "start": 0,
+          "end": 5.04
+        }
+      ]
+    }
   }
 }

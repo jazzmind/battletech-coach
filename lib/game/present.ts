@@ -4,7 +4,7 @@ import { factionLabel, rosterFor, scenarioOf, speak } from "./scenarios"
 import { toText } from "./script"
 import { tipFor } from "./tips"
 import { clipId } from "../voice/key"
-import { briefingLines, endingLines, interludeFor, lessonLines, toVoice } from "../voice/lines"
+import { briefingLines, endingLines, interludeFor, lessonLines, ordersSpan, toVoice } from "../voice/lines"
 import {
   currentCard,
   enemiesOf,
@@ -91,7 +91,7 @@ function finish(state: GameState, playerId: string, screen: Screen): Screen {
   if (interlude) {
     const names = seatNames(state)
     screen.interlude = { title: interlude.title, text: speak(toText(interlude.lines), names.innerSphere, names.clan) }
-    screen.voice = { ...screen.voice, interlude: toVoice(interlude.lines, names) }
+    screen.voice = { ...screen.voice, interlude: toVoice(interlude.lines, names), scene: scenario.art?.src }
   }
   if (state.phase === "over") {
     const winner = state.players.find((player) => player.id === state.winnerId)
@@ -101,6 +101,7 @@ function finish(state: GameState, playerId: string, screen: Screen): Screen {
     screen.voice = {
       ending: toVoice(endingLines(scenario, outcome), names),
       lesson: toVoice(lessonLines(scenario), names),
+      scene: scenario.art?.src,
     }
   }
   return screen
@@ -173,10 +174,14 @@ function presentBriefing(state: GameState, screen: Screen, me: Player): Screen {
   screen.say = fill(toText(scenario.story))
   screen.lesson = scenario.lesson
   screen.lessonKicker = "New rule today"
+  const span = ordersSpan(scenario, me.faction)
   screen.voice = {
     mission: toVoice(briefingLines(scenario, me.faction), names),
     lesson: toVoice(lessonLines(scenario), names),
     clip: clipId(scenario.id, me.faction),
+    clipAt: span.clipAt,
+    clipSpan: span.clipSpan,
+    scene: scenario.art?.src,
   }
   screen.mission = {
     chapter: scenario.chapter,

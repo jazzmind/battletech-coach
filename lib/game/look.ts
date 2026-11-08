@@ -17,3 +17,12 @@ export function lookPrompt(screen: Screen, playerName: string): string {
     "Do not invent numbers from a card.",
   ].join(" ")
 }
+
+export function checkPrompt(mech: string): string {
+  return [
+    `Look for the ${mech} miniature on the table.`,
+    "Say whether you can see it, and whether it is sitting on a marked ring.",
+    "If the photo is too dark, too close, or the miniature is missing, say that plainly.",
+    "If you cannot tell, say so. The ring on the diagram is still the spot.",
+  ].join(" ")
+}

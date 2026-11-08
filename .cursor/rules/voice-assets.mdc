@@ -16,6 +16,7 @@ Recordings are keyed by a hash of the HeyGen voice and the spoken text, so any w
   4. Poll MCP `get_video` about every 30 seconds until it is completed.
   5. `npm run video -- --save <id> '<video url>'` uploads the mp4 and a poster (the portrait cropped to 720x900, the same as HeyGen's thumbnail) and writes the manifest. Quote the URL, because it contains `&` and `~`.
 - `npm run video -- --api` renders through the pay-as-you-go API instead, at about $0.70 a clip. Run it only if Wes says yes in the current chat.
+- Lieutenant and Star Commander lines (`lyran`, `falcon`) can be rendered as their own clips. `npm run video -- --lines` lists the ones still missing. `npm run video -- --lines --prepare [--only <voice key>]` uploads the existing mp3 and prints the MCP `create_video_from_image` inputs. `npm run video -- --lines --save line.<key> '<video url>'` stores the clip under `lineClips` in the manifest. Same credit cost as a briefing clip, and the same rule: use the HeyGen MCP, not `--api`, unless Wes says yes.
 - Change a voice with `npm run voices -- --set speaker=voiceId`. That re-keys every line for that speaker.
 - Clips and portraits upload with `PUBLIC_BLOB_READ_WRITE_TOKEN`. `BLOB_READ_WRITE_TOKEN` is the app's private store and rejects public uploads.
 - `lib/voice/manifest.json` is shared by both scripts, and each one re-reads it before writing. Still, do not hand-edit it while a script is running.

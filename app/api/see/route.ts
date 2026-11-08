@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { authConfigured, getAuth } from "@/lib/auth"
+import { describeSeen } from "@/lib/see"
 import { chargeLook } from "@/lib/see-store"
 
 export const runtime = "nodejs"
@@ -16,14 +17,21 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Sign in with your email to check the table." }, { status: 401 })
   }
-  let body: { image?: string; mech?: string }
+  let body: { image?: string; mech?: string; mechs?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "The picture did not arrive." }, { status: 400 })
   }
+  const mechs = Array.isArray(body.mechs)
+    ? body.mechs.filter((name): name is string => typeof name === "string").map((name) => name.trim()).filter(Boolean)
+    : []
+  const look = mechs.length > 0
+  if (look && (mechs.length > 8 || mechs.some((name) => name.length > 24))) {
+    return NextResponse.json({ error: "The coach does not know which minis to look for." }, { status: 400 })
+  }
   const mech = body.mech?.trim() ?? ""
-  if (!mech || mech.length > 24) {
+  if (!look && (!mech || mech.length > 24)) {
     return NextResponse.json({ error: "The coach does not know which mini to look for." }, { status: 400 })
   }
   if (!body.image?.startsWith(JPEG)) {
@@ -60,10 +68,17 @@ export async function POST(request: Request) {
         assets: {
           photo: { type: "image", format: "jpeg", data_base64: body.image.slice(JPEG.length) },
         },
-        questions: {
-          where: { type: "box", instructions: `the ${mech} miniature on the table in photo` },
-          present: { type: "noul", instructions: `Is the ${mech} miniature visible in photo?` },
-        },
+        questions: look
+          ? Object.fromEntries(
+              mechs.map((name, index) => [
+                `present_${index}`,
+                { type: "noul", instructions: `Is the ${name} miniature visible in photo?` },
+              ]),
+            )
+          : {
+              where: { type: "box", instructions: `the ${mech} miniature on the table in photo` },
+              present: { type: "noul", instructions: `Is the ${mech} miniature visible in photo?` },
+            },
       }),
     })
   } catch {
@@ -73,10 +88,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "I can't tell from here. The ring on the diagram is still the spot." }, { status: 502 })
   }
   const data = (await response.json()) as {
-    answers?: {
-      where?: { confidence?: number | null }
-      present?: { noul?: number }
-    }
+    answers?: Record<string, { confidence?: number | null; noul?: number }>
+  }
+  if (look) {
+    const scores = mechs.map((_, index) => data.answers?.[`present_${index}`]?.noul ?? 0)
+    return NextResponse.json({ text: describeSeen(mechs, scores) })
   }
   const seen = (data.answers?.present?.noul ?? 0) >= 0.6
   const confidence = data.answers?.where?.confidence
