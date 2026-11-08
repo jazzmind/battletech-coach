@@ -1,10 +1,18 @@
 // Render the commander briefing clips: HeyGen lip-syncs a pilot portrait to the
 // commander's recorded orders, and the mp4 goes to Vercel Blob.
-//   npm run video                    render every clip that is missing or out of date
-//   npm run video -- --dry           list clips and estimated minutes, spend nothing
-//   npm run video -- --only <id>     render one clip, for example first-steps.clan
-//   npm run video -- --parallel 2    clips rendering at the same time (default 4)
-import { readFileSync, writeFileSync } from "node:fs"
+//
+// Render through the HeyGen MCP server, which bills plan credits:
+//   npm run video                          list clips that are missing or out of date (free)
+//   npm run video -- --prepare             free TTS + captions per clip; prints the MCP
+//                                          create_video_from_image inputs
+//   npm run video -- --save <id> <url> [poster]   after the MCP render: upload and write the manifest
+//
+// Paid pay-as-you-go API path, only with Wes's go-ahead:
+//   npm run video -- --api [--parallel 4]
+//
+// Any mode takes --only <id>, for example --only first-steps.clan.
+import { execFileSync } from "node:child_process"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { put } from "@vercel/blob"
 import { CATALOG, type Scenario } from "../lib/game/scenarios"
@@ -95,9 +103,20 @@ async function portraitUrl(who: "garrison" | "galaxy"): Promise<string> {
   return url
 }
 
-async function render(job: Job) {
+const PENDING_DIR = path.join(ROOT, ".voices/pending")
+const LOOK = {
+  aspectRatio: "4:5",
+  fit: "cover",
+  resolution: "720p",
+  expressiveness: "medium",
+  motionPrompt: "A calm commander giving a radio briefing. Small nods, steady eyes, no hand gestures.",
+} as const
+
+type Pending = { id: string; title: string; image: { type: "url"; url: string }; audioUrl: string; seconds: number; captions: Caption[] }
+
+async function speech(job: Job) {
   const who = PORTRAIT[job.faction]
-  const speech = await heygen<{ data: { audio_url: string; duration: number; original_words?: Word[] } }>("/v3/models/audio/tts", {
+  const result = await heygen<{ data: { audio_url: string; duration: number; original_words?: Word[] } }>("/v3/models/audio/tts", {
     method: "POST",
     body: JSON.stringify({
       model: "heygen-voice-1-turbo-free",
@@ -108,25 +127,63 @@ async function render(job: Job) {
       output_format: { encoding: "mp3", sample_rate_hertz: 44100, bitrate_bps: 96000 },
     }),
   })
-  const words = speech.data.original_words ?? []
+  const words = result.data.original_words ?? []
   if (words.length === 0) throw new Error(`No word timings came back for ${job.id}`)
+  return { audioUrl: result.data.audio_url, seconds: result.data.duration, captions: captionsFor(job.sentences, words) }
+}
 
+async function prepare(job: Job): Promise<Pending> {
+  const spoken = await speech(job)
+  const pending: Pending = {
+    id: job.id,
+    title: `Briefing ${job.id}`,
+    image: { type: "url", url: await portraitUrl(PORTRAIT[job.faction]) },
+    ...spoken,
+  }
+  mkdirSync(PENDING_DIR, { recursive: true })
+  writeFileSync(path.join(PENDING_DIR, `${job.id}.json`), `${JSON.stringify(pending, null, 2)}\n`)
+  return pending
+}
+
+// HeyGen's own thumbnail is the portrait cropped to the 720p 4:5 frame; make the same one locally.
+function portraitPoster(id: string): Buffer {
+  const who = PORTRAIT[id.split(".").pop() as Faction]
+  const jpg = path.join(PENDING_DIR, `${id}.jpg`)
+  const frame = "scale=720:900:force_original_aspect_ratio=increase,crop=720:900"
+  execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", path.join(ROOT, "public/art/pilots", `${who}.jpg`), "-vf", frame, "-q:v", "3", jpg])
+  return readFileSync(jpg)
+}
+
+async function save(id: string, videoUrl: string, posterUrl?: string) {
+  const file = path.join(PENDING_DIR, `${id}.json`)
+  if (!existsSync(file)) throw new Error(`No prepared speech for ${id}. Run npm run video -- --prepare --only ${id} first.`)
+  const pending = JSON.parse(readFileSync(file, "utf8")) as Pending
+  const url = await blob(`briefings/${id}.mp4`, await download(videoUrl), "video/mp4")
+  // The MCP status call returns no thumbnail.
+  const still = posterUrl ? await download(posterUrl) : portraitPoster(id)
+  const poster = await blob(`briefings/${id}.jpg`, still, "image/jpeg")
+  saveClip(id, { url, seconds: round(pending.seconds), poster, captions: pending.captions })
+  console.log(`  ${id}: saved ${url}`)
+}
+
+async function render(job: Job) {
+  const spoken = await speech(job)
   const created = await heygen<{ data: { video_id: string } }>("/v3/videos", {
     method: "POST",
     body: JSON.stringify({
       type: "image",
       title: `Briefing ${job.id}`,
-      image: { type: "url", url: await portraitUrl(who) },
-      audio_url: speech.data.audio_url,
-      aspect_ratio: "4:5",
-      fit: "cover",
-      resolution: "720p",
-      expressiveness: "medium",
-      motion_prompt: "A calm commander giving a radio briefing. Small nods, steady eyes, no hand gestures.",
+      image: { type: "url", url: await portraitUrl(PORTRAIT[job.faction]) },
+      audio_url: spoken.audioUrl,
+      aspect_ratio: LOOK.aspectRatio,
+      fit: LOOK.fit,
+      resolution: LOOK.resolution,
+      expressiveness: LOOK.expressiveness,
+      motion_prompt: LOOK.motionPrompt,
     }),
   })
   const videoId = created.data.video_id
-  console.log(`  ${job.id}: rendering ${videoId} (${Math.round(speech.data.duration)}s of speech)`)
+  console.log(`  ${job.id}: rendering ${videoId} (${Math.round(spoken.seconds)}s of speech)`)
 
   const started = Date.now()
   for (;;) {
@@ -143,9 +200,9 @@ async function render(job: Job) {
         : undefined
       saveClip(job.id, {
         url,
-        seconds: round(video.duration ?? speech.data.duration),
+        seconds: round(video.duration ?? spoken.seconds),
         ...(poster ? { poster } : {}),
-        captions: captionsFor(job.sentences, words),
+        captions: spoken.captions,
       })
       console.log(`  ${job.id}: saved ${url}`)
       return
@@ -156,6 +213,11 @@ async function render(job: Job) {
 
 async function main() {
   loadEnv()
+  if (args.includes("--save")) {
+    const [id, videoUrl, posterUrl] = args.slice(args.indexOf("--save") + 1)
+    if (!id || !videoUrl) throw new Error("Usage: npm run video -- --save <id> <videoUrl> [posterUrl]")
+    return save(id, videoUrl, posterUrl)
+  }
   const manifest = readManifest()
   const all = jobs().filter((job) => !only || job.id === only)
   if (only && all.length === 0) throw new Error(`No clip called ${only}. Ids look like first-steps.clan.`)
@@ -163,12 +225,23 @@ async function main() {
   const seconds = todo.reduce((sum, job) => sum + job.sentences.join(" ").split(/\s+/).length / WORDS_PER_SECOND, 0)
   console.log(`${all.length} clips, ${todo.length} to render, about ${(seconds / 60).toFixed(1)} minutes of video.`)
 
-  if (args.includes("--dry")) {
+  const prepareOnly = args.includes("--prepare")
+  if (!prepareOnly && !args.includes("--api")) {
     for (const job of todo) console.log(`  ${job.id.padEnd(28)} ${job.sentences.join(" ").slice(0, 90)}`)
     return
   }
   // The app's main store is private; clips and portraits go to the public media store.
   if (todo.length > 0 && !process.env.PUBLIC_BLOB_READ_WRITE_TOKEN) throw new Error("PUBLIC_BLOB_READ_WRITE_TOKEN is not set in .env.local.")
+
+  if (prepareOnly) {
+    for (const job of todo) {
+      const pending = await prepare(job)
+      console.log(
+        JSON.stringify({ id: pending.id, title: pending.title, image: pending.image, audioUrl: pending.audioUrl, ...LOOK }),
+      )
+    }
+    return
+  }
 
   const queue = [...todo]
   const failures: string[] = []
