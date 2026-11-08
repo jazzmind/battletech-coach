@@ -67,6 +67,7 @@ export function createGame(input: {
     pools: {},
     skipped: {},
     log: [],
+    ...(scenario.layout ? { layout: structuredClone(scenario.layout) } : {}),
   }
   if (input.solo) seatCoach(state)
   return state

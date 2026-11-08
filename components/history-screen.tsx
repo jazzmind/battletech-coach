@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { SCENARIOS } from "@/lib/game/scenarios"
+import { CATALOG } from "@/lib/game/scenarios"
 import { forgetRecent, loadRecent, saveRecent, type RecentGame } from "@/lib/recent"
 import { deleteRecap, loadRecaps, type Recap } from "@/lib/recaps"
 import { AppFrame } from "./app-frame"
@@ -28,7 +28,7 @@ export function HistoryScreen() {
         }
         const data = await response.json()
         if (data.state?.phase === "over") continue
-        const scenario = SCENARIOS.find((item) => item.id === data.state?.scenarioId)
+        const scenario = CATALOG.find((item) => item.id === data.state?.scenarioId)
         running.push({
           code: game.code,
           scenarioId: data.state?.scenarioId ?? game.scenarioId,

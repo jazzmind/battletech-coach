@@ -3,15 +3,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { present } from "@/lib/game/present"
-import { SCENARIOS } from "@/lib/game/scenarios"
+import { CATALOG } from "@/lib/game/scenarios"
 import type { Action, GameState, Screen } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { rememberGame } from "@/lib/recent"
 import { recapOf, saveRecap } from "@/lib/recaps"
+import type { VoiceLine } from "@/lib/game/script"
+import { play, stop, unlock } from "@/lib/voice/player"
+import { BriefingClip } from "./briefing-clip"
 import { DraftPanel } from "./draft-panel"
+import { autoLines, type AudioSettings } from "@/lib/voice/auto"
 import { GameToolbar } from "./game-toolbar"
 import { Mark } from "./mark"
 import { Modal } from "./modal"
+import { ReadAloud } from "./read-aloud"
 import { TableCheck } from "./table-check"
 import { TableLook } from "./table-look"
 import { TableMap } from "./table-map"
@@ -27,12 +32,22 @@ export function CoachScreen({ code }: { code: string }) {
   const [lookOpen, setLookOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
   const [mechsOpen, setMechsOpen] = useState(false)
+  const [audio, setAudio] = useState<AudioSettings>({ story: false, steps: false })
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
     const saved = localStorage.getItem("mech-coach-name")
     if (saved) setName(saved)
+    setAudio({ story: localStorage.getItem(STORY_KEY) === "1", steps: localStorage.getItem(STEPS_KEY) === "1" })
   }, [])
+
+  function changeAudio(next: AudioSettings) {
+    localStorage.setItem(STORY_KEY, next.story ? "1" : "0")
+    localStorage.setItem(STEPS_KEY, next.steps ? "1" : "0")
+    if (next.story || next.steps) unlock()
+    else stop()
+    setAudio(next)
+  }
 
   useEffect(() => {
     if (!playerId) return
@@ -61,7 +76,7 @@ export function CoachScreen({ code }: { code: string }) {
 
   useEffect(() => {
     if (!state) return
-    const scenario = SCENARIOS.find((item) => item.id === state.scenarioId)
+    const scenario = CATALOG.find((item) => item.id === state.scenarioId)
     rememberGame({
       code: state.code,
       scenarioId: state.scenarioId,
@@ -193,10 +208,13 @@ export function CoachScreen({ code }: { code: string }) {
             busy={busy}
             undo={screen.undo}
             hasMap={Boolean(screen.map)}
+            audio={audio}
             onUndo={() => void send(screen.undo as Action)}
             onMap={() => setMapOpen(true)}
             onLook={() => setLookOpen(true)}
+            onAudio={changeAudio}
           />
+          <AutoRead screen={screen} audio={audio} />
         </aside>
         <section className="stage">
           <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={`${screen.say}:${screen.tip?.title ?? ""}:${screen.mission?.chapter ?? ""}`}>
@@ -206,8 +224,17 @@ export function CoachScreen({ code }: { code: string }) {
             <h2 data-testid="title">{screen.title}</h2>
             <p className="aloud" data-testid="say">{screen.say}</p>
           </article>
+          {screen.interlude ? (
+            <section className="mission interlude" data-testid="interlude">
+              <ReadAloud lines={screen.voice?.interlude} label="Play the radio" testId="read-interlude" />
+              <p className="kicker">{screen.interlude.title}</p>
+              <p>{screen.interlude.text}</p>
+            </section>
+          ) : null}
           {screen.mission ? (
             <section className="mission" data-testid="mission">
+              <ReadAloud lines={screen.voice?.mission} label="Read the briefing" testId="read-briefing" />
+              <BriefingClip id={screen.voice?.clip} from={screen.voice?.clip?.endsWith(".clan") ? "Galaxy Command" : "Garrison Command"} />
               <p className="kicker">{screen.mission.unit}</p>
               <p><strong>Goal. </strong>{screen.mission.goal}</p>
               <p><strong>Orders. </strong>{screen.mission.orders}</p>
@@ -223,6 +250,7 @@ export function CoachScreen({ code }: { code: string }) {
             <p className="lesson">
               {screen.over ? <span className="kicker">What we learned</span> : screen.lessonKicker ? <span className="kicker">{screen.lessonKicker}</span> : null}
               {screen.lesson}
+              <ReadAloud lines={screen.voice?.lesson} label="Read the rule" testId="read-lesson" />
             </p>
           ) : null}
           {screen.tip ? (
@@ -241,7 +269,12 @@ export function CoachScreen({ code }: { code: string }) {
               onField={(variantIds) => void send({ type: "field", playerId, variantIds })}
             />
           ) : null}
-          {screen.ending ? <p className="ending" data-testid="ending">{screen.ending}</p> : null}
+          {screen.ending ? (
+            <div className="ending" data-testid="ending">
+              <ReadAloud lines={screen.voice?.ending} label="Read the ending" testId="read-ending" />
+              <p>{screen.ending}</p>
+            </div>
+          ) : null}
           {screen.links ? (
             <p className="ending">
               Build the next list in{" "}
@@ -353,6 +386,23 @@ export function CoachScreen({ code }: { code: string }) {
       </Modal>
     </main>
   )
+}
+
+const STORY_KEY = "mech-coach-story-audio"
+const STEPS_KEY = "mech-coach-step-audio"
+
+function AutoRead({ screen, audio }: { screen: Screen; audio: AudioSettings }) {
+  const key = `${screen.kicker}|${screen.title}|${screen.say}|${screen.interlude?.title ?? ""}|${screen.ending ?? ""}`
+  const linesRef = useRef<VoiceLine[]>([])
+  linesRef.current = autoLines(screen, audio)
+
+  useEffect(() => {
+    if (linesRef.current.length === 0) return
+    void play("auto", linesRef.current)
+  }, [audio.story, audio.steps, key])
+
+  useEffect(() => () => stop(), [])
+  return null
 }
 
 function Pad({

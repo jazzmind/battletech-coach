@@ -5,7 +5,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/game/solo.test.ts lib/see.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
+    "voices": "tsx scripts/voices.ts",
+    "voice": "tsx scripts/voice.ts",
+    "video": "tsx scripts/video.ts",
+    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/game/solo.test.ts lib/game/script.test.ts lib/game/missions.test.ts lib/voice/auto.test.ts lib/see.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.18",
@@ -21,6 +24,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "@vercel/blob": "^2.8.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }

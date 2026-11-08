@@ -1,0 +1,90 @@
+{
+  "first-steps": {
+    "story": "Twycross, 3050. Clan Jade Falcon has landed. Open channel: \"I am Star Commander {clan} of Clan Jade Falcon. What warrior defends this world? Meet me, one against one.\" That challenge is a batchall. Lieutenant {is} keys the radio: \"Twycross Garrison. One Warhammer. I will meet you.\" {clan} walks out in a Timber Wolf. Inner Sphere pilots call it a Mad Cat, because it looks like two of their mechs mashed together. Under zellbrigen, the Clan code of honor, the duel is one on one, and when it is done both pilots pull back. Nobody loses.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Garrison, the Warhammer is still standing. The Falcon is pulling back.\" Honor is kept, and nobody is called the loser.",
+      "clan": "Star Commander {clan}: \"You fight well for a Spheroid, Lieutenant.\" The Timber Wolf walks off still standing. Honor is kept, and nobody is called the loser.",
+      "draw": "Open channel. Star Commander {clan}: \"Well fought, Lieutenant {is}. We will meet in the town.\" Both pilots raise a hand and walk back. The batchall is answered."
+    }
+  },
+  "streets": {
+    "story": "Garrison Command, all units: the duel is over and the Falcons are moving into town. Buildings and trees break up the streets. Lieutenant {is} takes a Wasp and a Warhammer. Intercepted on the Clan channel: \"Star Commander {clan}. Fire Moth, Timber Wolf, advance. The town will be ours by nightfall.\" A mech against a wall, or standing in the trees, is harder to hit. A mech that jumps is harder to hit too.",
+    "ending": {
+      "innerSphere": "Garrison Command, all units: the town stays Lyran. Lieutenant {is} holds the streets.",
+      "clan": "Star Commander {clan}: \"The streets are ours. Raise the Falcon over the town.\"",
+      "draw": "Both sides pull out. The streets are empty, and every channel goes quiet."
+    }
+  },
+  "beacon": {
+    "story": "Garrison Command: our listening post in the middle of town is still transmitting. The token in the center is its beacon. Whoever holds it alone can call down help. For us that means reinforcements. For the Falcons it means their DropShips. Lieutenant {is} has a Phoenix Hawk and a Wasp. Clan channel: \"Star Commander {clan}. Pouncer, Fire Moth, take that beacon.\" Every shot makes a mech Hot, and a Hot mech's next shot needs one more.",
+    "ending": {
+      "innerSphere": "The beacon gets through on the Lyran band: \"Garrison, we hear you. Help is coming, Lieutenant {is}.\"",
+      "clan": "The beacon calls the Falcon DropShips. Star Commander {clan}: \"The listening post is ours.\"",
+      "draw": "The beacon goes quiet. Nobody held it long enough to be heard."
+    }
+  },
+  "how-far": {
+    "story": "Garrison Command: Falcon assault contact on the open flats. There is nowhere to hide, so distance is the whole fight. Lieutenant {is} brings an Atlas. It is the biggest Lyran mech in the box, and its skull face was built to make enemies afraid. Clan channel: \"Star Commander {clan}, in Warhawk. I will take that Atlas.\" The Inner Sphere calls that mech a Masakari.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Masakari down. The Atlas is walking off the flats.\" Twycross still has its giant.",
+      "clan": "Star Commander {clan}: \"The Atlas has fallen. The flats are ours.\" The Masakari outshot the Lyran giant.",
+      "draw": "Both giants fall. Nobody answers on either channel."
+    }
+  },
+  "they-moved": {
+    "story": "Garrison scout net: \"Contact. One Clan light, moving fast across the flats.\" Lieutenant {is} has a Wasp. Star Commander {clan} has a Fire Moth. The Clans call it a Dasher. It is the fastest mech in this box, and one good hit can knock it out. A mech that moves is harder to hit. A mech that stands still is easier to hit, and its own shot is easier.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Dasher down.\" The Wasp caught it. Fast is not the same as safe.",
+      "clan": "Star Commander {clan}: \"The Wasp is down.\" The Dasher lives. Speed wins this race.",
+      "draw": "Both scouts break off and go silent. The race ends even."
+    }
+  },
+  "jump-jets": {
+    "story": "Garrison Command: a town wall stands between our line and theirs. Lieutenant {is} brings a Phoenix Hawk. Clan channel: \"Star Commander {clan}. Pouncer, over the wall.\" Both mechs can jump the wall. Jumping ignores trees and buildings. A jump makes your own shot harder, and it makes you a little harder to hit.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"The wall is held. The Pouncer is down on the far side.\"",
+      "clan": "Star Commander {clan}: \"Over the wall. The Phoenix Hawk could not hold it.\"",
+      "draw": "Both jumpers fall. The wall stands empty."
+    }
+  },
+  "trees-and-walls": {
+    "story": "Garrison Command: the Mad Cat from the duel is back, in the orchards outside town. Lieutenant {is} takes the Warhammer in after it. Clan channel: \"Star Commander {clan}. We finish what we began, Lieutenant.\" Both pilots have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Mad Cat down in the trees.\" The orchard stays Lyran.",
+      "clan": "Star Commander {clan}: \"The Warhammer lies in the orchard. This ground is ours.\"",
+      "draw": "Both mechs fall among the trees. The orchard goes quiet."
+    }
+  },
+  "heat-scale": {
+    "story": "Garrison Command: the Falcons have pushed us onto the salt flats. It is hot out here. Mechs carry fusion engines, and every shot makes them hotter. Star Commander {clan}'s Nova has more guns than it can keep cool. Lieutenant {is} answers in the Warhammer.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"The Nova cooked itself.\" The Warhammer still has heat to spare.",
+      "clan": "Star Commander {clan}: \"The Warhammer is down.\" The Nova's guns finished it before the heat could shut them down.",
+      "draw": "Both mechs go dark in the heat. The salt flats win."
+    }
+  },
+  "breaks": {
+    "story": "Garrison tech, before the drop: \"Armor is the metal skin. Structure is the bones underneath.\" Lieutenant {is}'s Atlas has a lot of both. Star Commander {clan}'s Warhawk does too. A hit in the back marks one extra bubble. When the red structure bubbles get marked, something inside can break. That is a critical hit.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Hit the Masakari in the back. Structure breached. It is down.\"",
+      "clan": "Star Commander {clan}: \"The Atlas is broken open. Even a giant has bones.\"",
+      "draw": "Both assault mechs break. The crits take them together."
+    }
+  },
+  "up-close": {
+    "story": "Garrison Command: the Falcons followed us into a narrow cut of the Great Gash, the huge canyon on Twycross. In here the mechs get too close to shoot. Lieutenant {is} brings a Wraith, a fast mech with fists. Star Commander {clan} brings the Nova. When the bases touch, you punch. You do not shoot.",
+    "ending": {
+      "innerSphere": "Lieutenant {is}: \"Got inside its guns. The Nova is down.\" Fists win the canyon.",
+      "clan": "Star Commander {clan}: \"The Wraith never landed its punch.\" The Nova kept just enough room to shoot.",
+      "draw": "They meet in the middle and both fall. The Gash keeps the wrecks."
+    }
+  },
+  "the-whole-turn": {
+    "story": "Garrison Command, all units: the edge of town, and the listening post beacon is back in the center. Lieutenant {is} has the Warhammer and the Phoenix Hawk. Clan channel: \"Star Commander {clan}. Timber Wolf, Pouncer. Take the beacon and Twycross falls.\" Every lesson comes together here. This is a full quick-start turn: move, shoot, heat, the back armor, crits, punches, sprints, and charges.",
+    "ending": {
+      "innerSphere": "The beacon reaches the Lyran line. Lieutenant {is}: \"Garrison, Twycross holds for one more day.\"",
+      "clan": "The beacon calls the Falcons down. Star Commander {clan}: \"Twycross belongs to Clan Jade Falcon.\"",
+      "draw": "The beacon goes quiet. Neither side holds Twycross tonight."
+    }
+  }
+}

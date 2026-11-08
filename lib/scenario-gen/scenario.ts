@@ -1,4 +1,7 @@
-import { rules, type Scenario, type TerrainStep } from "../game/scenarios"
+import { rules } from "../game/rules"
+import type { Scenario, TerrainStep } from "../game/scenarios"
+import { narrator, type Line } from "../game/script"
+import type { Faction } from "../game/types"
 import { generateLayout, type Layout, type ObjectiveType, type PickupInventory, type TableSize, type TerrainKind } from "./layout"
 
 const KIND_NAME: Record<TerrainKind, string> = {
@@ -10,6 +13,19 @@ const KIND_NAME: Record<TerrainKind, string> = {
   rough: "rough ground",
   woods: "woods",
   wall: "wall",
+}
+
+export const PICKUP_STORY: Line[] = [
+  narrator(
+    "{is} and {clan} brought their own lances. The map shows where the terrain goes. Read each special on the card out loud, then play the turn you already know.",
+    "Two commanders brought their own lances. The map shows where the terrain goes. Read each special on the card out loud, then play the turn you already know.",
+  ),
+]
+
+export const PICKUP_ENDING: Record<Faction | "draw", Line[]> = {
+  innerSphere: [narrator("{is} holds the field.", "The Inner Sphere side holds the field.")],
+  clan: [narrator("{clan} holds the field.", "The Clan side holds the field.")],
+  draw: [narrator("Neither side holds the field.")],
 }
 
 export function makeLayout(input: {
@@ -49,8 +65,7 @@ export function pickupScenario(layout: Layout, objective: ObjectiveType): Scenar
     title,
     summary: "Your mechs, a generated table, and the full quick-start turn.",
     chapter: "Pickup game",
-    story:
-      "{is} and {clan} brought their own lances. The map shows where the terrain goes. Read each special on the card out loud, then play the turn you already know.",
+    story: PICKUP_STORY,
     goal,
     sides: {
       innerSphere: {
@@ -72,11 +87,7 @@ export function pickupScenario(layout: Layout, objective: ObjectiveType): Scenar
         ],
       },
     },
-    ending: {
-      innerSphere: "{is} holds the field.",
-      clan: "{clan} holds the field.",
-      draw: "Neither side holds the field.",
-    },
+    ending: PICKUP_ENDING,
     lesson:
       "This is the whole quick-start turn: initiative, move, the shot number, heat, rear, crits, punches, sprints, charges, and death from above. Read any special ability on the card out loud and use the card. Formations, pilot cards, and battlefield support stay off.",
     table: `Clear a space ${layout.width / 12} feet by ${layout.depth / 12} feet. Sit on the home edges shown on the map.`,
@@ -137,7 +148,7 @@ export function stepsFor(layout: Layout): TerrainStep[] {
   return steps
 }
 
-function extraPieces(layout: Layout): string[] {
+export function extraPieces(layout: Layout): string[] {
   const counts = new Map<TerrainKind, number>()
   for (const piece of layout.pieces) counts.set(piece.kind, (counts.get(piece.kind) ?? 0) + 1)
   const lines: string[] = []

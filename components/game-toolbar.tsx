@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import type { Action } from "@/lib/game/types"
+import type { AudioSettings } from "@/lib/voice/auto"
 import { Modal } from "./modal"
 
 export function GameToolbar({
@@ -10,19 +11,25 @@ export function GameToolbar({
   busy,
   undo,
   hasMap,
+  audio,
   onUndo,
   onMap,
   onLook,
+  onAudio,
 }: {
   code: string
   busy: boolean
   undo?: Action
   hasMap: boolean
+  audio: AudioSettings
   onUndo: () => void
   onMap: () => void
   onLook: () => void
+  onAudio: (next: AudioSettings) => void
 }) {
   const [menu, setMenu] = useState(false)
+  const [sound, setSound] = useState(false)
+  const anyAudio = audio.story || audio.steps
   const [copied, setCopied] = useState(false)
 
   async function copyCode() {
@@ -50,10 +57,44 @@ export function GameToolbar({
             Map
           </button>
         ) : null}
+        <button
+          type="button"
+          className={`toolbar-btn${anyAudio ? " on" : ""}`}
+          data-testid="audio-open"
+          title="Story audio and step reading"
+          onClick={() => setSound(true)}
+        >
+          Audio
+        </button>
         <button type="button" className="toolbar-btn" data-testid="look-open" aria-label="Look at my side" title="Look at my side" onClick={onLook}>
           <LookIcon />
         </button>
       </nav>
+      <Modal open={sound} title="Audio" onClose={() => setSound(false)}>
+        <div className="menu-sheet audio-sheet">
+          <button
+            type="button"
+            className={`switch${audio.story ? " on" : ""}`}
+            data-testid="audio-story"
+            aria-pressed={audio.story}
+            onClick={() => onAudio({ ...audio, story: !audio.story })}
+          >
+            <strong>Story audio {audio.story ? "on" : "off"}</strong>
+            <span>Plays the briefing, the radio between turns, and the ending, with a voice for each character.</span>
+          </button>
+          <button
+            type="button"
+            className={`switch${audio.steps ? " on" : ""}`}
+            data-testid="audio-steps"
+            aria-pressed={audio.steps}
+            onClick={() => onAudio({ ...audio, steps: !audio.steps })}
+          >
+            <strong>Read each step {audio.steps ? "on" : "off"}</strong>
+            <span>Reads the coach's instruction out loud every time it changes.</span>
+          </button>
+          <p className="note">The speaker buttons on the briefing, the rule, and the ending always work.</p>
+        </div>
+      </Modal>
       <Modal open={menu} title={`Battle ${code}`} onClose={() => setMenu(false)}>
         <div className="menu-sheet">
           <Link href="/" className="primary back-link" onClick={() => setMenu(false)}>

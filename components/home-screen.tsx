@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
+import { CATALOG, GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
 import { BOX_INVENTORY, TERRAIN_LABEL, type ObjectiveType, type PickupInventory, type TableSize, type TerrainKind } from "@/lib/scenario-gen/layout"
 import type { Faction, Group } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { loadRecent, saveRecent, type RecentGame } from "@/lib/recent"
 import { Mark } from "./mark"
 
-const GROUPS: Group[] = ["teaching", "real", "graduation"]
+const GROUPS: Group[] = ["teaching", "real", "graduation", "missions"]
 
 export function HomeScreen() {
   const router = useRouter()
@@ -106,7 +106,7 @@ export function HomeScreen() {
             {GROUPS.map((group) => (
               <div className="scenario-group" key={group}>
                 <p className="group-title">{GROUP_LABEL[group]}</p>
-                {SCENARIOS.filter((scenario) => scenario.group === group).map((scenario) => (
+                {CATALOG.filter((scenario) => scenario.group === group).map((scenario) => (
                   <button
                     key={scenario.id}
                     type="button"
@@ -307,7 +307,7 @@ function ContinueGames() {
           continue
         }
         const data = await response.json()
-        const scenario = SCENARIOS.find((item) => item.id === data.state?.scenarioId)
+        const scenario = CATALOG.find((item) => item.id === data.state?.scenarioId)
         live.push({
           code: game.code,
           scenarioId: data.state?.scenarioId ?? game.scenarioId,

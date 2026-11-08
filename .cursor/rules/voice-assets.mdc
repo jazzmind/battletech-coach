@@ -1,0 +1,17 @@
+---
+description: Recorded voices and briefing clips for scenarios and missions. Use when editing scenario text, missions, the cast, or scripts/voice*.ts and scripts/video.ts.
+globs: lib/game/scenarios.ts,lib/game/missions.ts,lib/voice/**,scripts/voice*.ts,scripts/video.ts
+alwaysApply: false
+---
+
+# Voice and video assets
+
+Recordings are keyed by a hash of the HeyGen voice and the spoken text, so any wording change orphans that line's mp3. The app falls back to the browser voice, so nothing breaks, but the recording is gone until you re-record.
+
+- After changing story, ending, goal, orders, plan, lesson, or interlude text, run `npm run voice` (free HeyGen TTS until Nov 30 2026, about 2 seconds per line). Add `--prune` to delete orphaned files.
+- After changing a side's `orders` or `plan`, that side's briefing clip is stale. Render clips through the HeyGen MCP server, which uses plan credits (see `heygen-mcp.mdc`). `npm run video` uses the pay-as-you-go API at about $2.30 per minute of video, roughly $0.70 a clip. Run it only if Wes says yes in the current chat. `npm run video -- --dry` is free and lists the stale clips.
+- Change a voice with `npm run voices -- --set speaker=voiceId`. That re-keys every line for that speaker.
+- Clips and portraits upload with `PUBLIC_BLOB_READ_WRITE_TOKEN`. `BLOB_READ_WRITE_TOKEN` is the app's private store and rejects public uploads.
+- Each clip takes about 4 minutes to render, so `scripts/video.ts` renders 4 at a time.
+- `lib/voice/manifest.json` is shared by both scripts, and each one re-reads it before writing. Still, do not hand-edit it while a script is running.
+- Portraits must stay original. Keep the cast genders matched to the portraits (the lieutenant is a woman, Galaxy Command is a man).

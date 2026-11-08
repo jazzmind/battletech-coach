@@ -134,10 +134,11 @@ function pickMech(state: GameState, coachId: string): string {
   const left = state.mechs.filter(
     (mech) => mech.ownerId === coachId && !mech.knockedOut && !state.moveOrder.includes(mech.id) && !mech.shutdown,
   )
-  const beacon = state.layout?.objectives.find((item) => item.kind === "hold")
   const ranked = [...left].sort((a, b) => {
-    if (!beacon) return 0
-    return distance(spot(a), beacon) - distance(spot(b), beacon)
+    const goalA = goalSpot(state, a)
+    const goalB = goalSpot(state, b)
+    if (!goalA || !goalB) return 0
+    return distance(spot(a), goalA) - distance(spot(b), goalB)
   })
   return ranked[0]?.id ?? left[0]?.id ?? ""
 }
@@ -186,8 +187,13 @@ function answerYes(state: GameState, mech: Mech, field: "los" | "arc" | "contact
 
 function coachHolds(state: GameState): boolean {
   const coachId = state.coachId
-  const beacon = state.layout?.objectives.find((item) => item.kind === "hold")
+  const current = scenarioOf(state).objectives?.[state.objectiveIndex]
+  const objectives = state.layout?.objectives ?? []
+  const beacon = objectives.find((item) => item.id === current?.id) ?? objectives.find((item) => item.kind === "hold")
   if (!coachId || !beacon) return false
+  if (beacon.kind === "exit") {
+    return state.mechs.some((mech) => mech.ownerId === coachId && !mech.knockedOut && mech.y != null && Math.abs(mech.y - farEdge(state, coachId)) <= 1)
+  }
   const near = (owner: "coach" | "human") =>
     state.mechs.some((mech) => {
       const mine = owner === "coach" ? mech.ownerId === coachId : mech.ownerId !== coachId
@@ -228,8 +234,8 @@ function scorePoint(state: GameState, mech: Mech, mode: MoveMode, origin: Point,
   if (mode === "stand" || moved < 1) {
     if (thin) score -= 1000
   }
-  const beacon = rules.beacon ? state.layout?.objectives.find((item) => item.kind === "hold") : undefined
-  if (beacon) score += 80 - distance(point, beacon)
+  const goal = goalSpot(state, mech)
+  if (goal) score += 80 - distance(point, goal)
   const card = cardOf(state.cards, mech.variant)
   let bestDamage = 0
   for (const enemy of state.mechs) {
@@ -246,11 +252,30 @@ function scorePoint(state: GameState, mech: Mech, mode: MoveMode, origin: Point,
   return score
 }
 
+// Exits pull a mech straight at the far edge. With several beacons, each mech
+// heads for the nearest one another coach mech is not already sitting on.
+function goalSpot(state: GameState, mech: Mech): Point | null {
+  if (!scenarioOf(state).rules.beacon) return null
+  const objectives = state.layout?.objectives ?? []
+  if (objectives.some((item) => item.kind === "exit")) return { x: mech.x ?? 0, y: farEdge(state, mech.ownerId) }
+  const holds = objectives.filter((item) => item.kind === "hold")
+  if (holds.length <= 1) return holds[0] ?? null
+  const taken = (beacon: Point) =>
+    state.mechs.some(
+      (other) => other.id !== mech.id && other.ownerId === mech.ownerId && !other.knockedOut && other.x != null && distance(spot(other), beacon) <= 2,
+    )
+  const open = holds.filter((beacon) => !taken(beacon))
+  return [...(open.length > 0 ? open : holds)].sort((a, b) => distance(spot(mech), a) - distance(spot(mech), b))[0]
+}
+
+function farEdge(state: GameState, ownerId: string): number {
+  const depth = state.layout?.depth ?? 36
+  return ownerId === state.players[0]?.id ? depth - 1 : 1
+}
+
 function goalPoint(state: GameState, mech: Mech): Point | null {
-  if (scenarioOf(state).rules.beacon) {
-    const beacon = state.layout?.objectives.find((item) => item.kind === "hold")
-    if (beacon) return beacon
-  }
+  const goal = goalSpot(state, mech)
+  if (goal) return goal
   const enemies = state.mechs.filter((other) => other.ownerId !== mech.ownerId && !other.knockedOut && other.x != null)
   if (enemies.length === 0) return null
   return enemies

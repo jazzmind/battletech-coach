@@ -61,6 +61,9 @@ coverage
 .cursor/mcp.json
 .cursor/*.local
 
+# Voice previews and samples for casting; the chosen recordings live in public/voice
+.voices
+
 # OS and editor scratch
 .DS_Store
 Thumbs.db

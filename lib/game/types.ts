@@ -1,5 +1,6 @@
 import type { CardFace } from "./cards"
 import type { Scenario } from "./scenarios"
+import type { VoiceLine } from "./script"
 import type { Layout, ObjectiveType, PickupInventory, TableSize } from "../scenario-gen/layout"
 
 export type Faction = "innerSphere" | "clan"
@@ -33,7 +34,7 @@ export type Phase =
   | "end"
   | "over"
 
-export type Group = "teaching" | "real" | "graduation"
+export type Group = "teaching" | "real" | "graduation" | "missions"
 
 export type CardField =
   | "walk"
@@ -252,6 +253,14 @@ export type Screen = {
   }
   tip?: { title: string; text: string }
   ending?: string
+  interlude?: { title: string; text: string }
+  voice?: {
+    mission?: VoiceLine[]
+    lesson?: VoiceLine[]
+    interlude?: VoiceLine[]
+    ending?: VoiceLine[]
+    clip?: string
+  }
   active: boolean
   wait?: string
   choices: Choice[]

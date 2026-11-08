@@ -1,4 +1,8 @@
+import { MISSIONS } from "./missions"
+import { rules } from "./rules"
+import { falcon, garrison, lyran, narrator, tag, type Line } from "./script"
 import type { Faction, Group, Rules } from "./types"
+import type { Layout } from "../scenario-gen/layout"
 
 export const INNER_SPHERE = [
   "Wasp",
@@ -21,35 +25,7 @@ export function factionLabel(faction: Faction): string {
   return faction === "innerSphere" ? "Inner Sphere" : "Clan"
 }
 
-const RULE_KEYS: (keyof Rules)[] = [
-  "teachingRange",
-  "teachingCover",
-  "teachingJump",
-  "teachingHeat",
-  "realRange",
-  "tmm",
-  "standstill",
-  "realJump",
-  "partialCover",
-  "woods",
-  "terrainCost",
-  "heatScale",
-  "rear",
-  "crits",
-  "physical",
-  "charge",
-  "sprint",
-  "los",
-  "firingArc",
-  "beacon",
-  "specialsReminder",
-  "retreat",
-]
-
-export function rules(partial: Partial<Rules>): Rules {
-  const base = Object.fromEntries(RULE_KEYS.map((key) => [key, false])) as Rules
-  return { ...base, ...partial }
-}
+export { rules }
 
 export type TerrainStep = { who: "host" | "guest"; say: string; piece?: number }
 
@@ -65,10 +41,10 @@ export type Scenario = {
   title: string
   summary: string
   chapter: string
-  story: string
+  story: Line[]
   goal: string
   sides: Record<Faction, SideBrief>
-  ending: Record<Faction | "draw", string>
+  ending: Record<Faction | "draw", Line[]>
   lesson: string
   table: string
   rules: Rules
@@ -79,6 +55,10 @@ export type Scenario = {
   beaconGoal: number
   pickup?: boolean
   objectives?: { id: string; label: string; kind: "hold" | "exit" }[]
+  layout?: Layout
+  art?: { src: string; alt: string }
+  // Radio chatter shown at the start of a turn, before initiative.
+  interludes?: { turn: number; title: string; lines: Line[] }[]
 }
 
 const LYRAN = "Twycross Garrison, Lyran Commonwealth"
@@ -97,8 +77,15 @@ export const SCENARIOS: Scenario[] = [
     title: "First Steps",
     summary: "One mech each. Two turns, then both pull back.",
     chapter: "Chapter 1: The Challenge",
-    story:
-      "Twycross, 3050. Clan Jade Falcon has landed. Open channel: \"I am Star Commander {clan} of Clan Jade Falcon. What warrior defends this world? Meet me, one against one.\" That challenge is a batchall. Lieutenant {is} keys the radio: \"Twycross Garrison. One Warhammer. I will meet you.\" {clan} walks out in a Timber Wolf. Inner Sphere pilots call it a Mad Cat, because it looks like two of their mechs mashed together. Under zellbrigen, the Clan code of honor, the duel is one on one, and when it is done both pilots pull back. Nobody loses.",
+    story: [
+      narrator("Twycross, 3050. Clan Jade Falcon has landed. Open channel:"),
+      falcon("\"I am Star Commander {clan} of Clan Jade Falcon. What warrior defends this world? Meet me, one against one.\""),
+      narrator("That challenge is a batchall. Lieutenant {is} keys the radio:"),
+      lyran("\"Twycross Garrison. One Warhammer. I will meet you.\""),
+      narrator(
+        "{clan} walks out in a Timber Wolf. Inner Sphere pilots call it a Mad Cat, because it looks like two of their mechs mashed together. Under zellbrigen, the Clan code of honor, the duel is one on one, and when it is done both pilots pull back. Nobody loses.",
+      ),
+    ],
     goal: "Play two turns, then both pilots pull back. Nobody loses. A shot that would knock a mech out ends the fight the same way.",
     sides: {
       innerSphere: {
@@ -121,9 +108,21 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Garrison, the Warhammer is still standing. The Falcon is pulling back.\" Honor is kept, and nobody is called the loser.",
-      clan: "Star Commander {clan}: \"You fight well for a Spheroid, Lieutenant.\" The Timber Wolf walks off still standing. Honor is kept, and nobody is called the loser.",
-      draw: "Open channel. Star Commander {clan}: \"Well fought, Lieutenant {is}. We will meet in the town.\" Both pilots raise a hand and walk back. The batchall is answered.",
+      innerSphere: [
+        tag("Lieutenant {is}:"),
+        lyran("\"Garrison, the Warhammer is still standing. The Falcon is pulling back.\""),
+        narrator("Honor is kept, and nobody is called the loser."),
+      ],
+      clan: [
+        tag("Star Commander {clan}:"),
+        falcon("\"You fight well for a Spheroid, Lieutenant.\""),
+        narrator("The Timber Wolf walks off still standing. Honor is kept, and nobody is called the loser."),
+      ],
+      draw: [
+        tag("Open channel. Star Commander {clan}:", "Open channel."),
+        falcon("\"Well fought, Lieutenant {is}. We will meet in the town.\"", "Well fought, Lieutenant. We will meet in the town."),
+        narrator("Both pilots raise a hand and walk back. The batchall is answered."),
+      ],
     },
     lesson:
       "Use the Warhammer side labeled 8R and the Timber Wolf side labeled Prime. The other sides are not an even match. The skill spot is blank, so both pilots are regular and the dice need 4. Count the armor bubbles and the red structure bubbles once. The coach keeps that count. Mark the same bubbles on the card. After two turns, both pilots pull back. Nobody loses.",
@@ -141,8 +140,15 @@ export const SCENARIOS: Scenario[] = [
     title: "Streets and Trees",
     summary: "Two mechs each. Buildings, trees, jumps, and cover.",
     chapter: "Chapter 2: The Town",
-    story:
-      "Garrison Command, all units: the duel is over and the Falcons are moving into town. Buildings and trees break up the streets. Lieutenant {is} takes a Wasp and a Warhammer. Intercepted on the Clan channel: \"Star Commander {clan}. Fire Moth, Timber Wolf, advance. The town will be ours by nightfall.\" A mech against a wall, or standing in the trees, is harder to hit. A mech that jumps is harder to hit too.",
+    story: [
+      garrison("Garrison Command, all units: the duel is over and the Falcons are moving into town."),
+      narrator("Buildings and trees break up the streets. Lieutenant {is} takes a Wasp and a Warhammer. Intercepted on the Clan channel:"),
+      falcon(
+        "\"Star Commander {clan}. Fire Moth, Timber Wolf, advance. The town will be ours by nightfall.\"",
+        "Star Commander here. Fire Moth, Timber Wolf, advance. The town will be ours by nightfall.",
+      ),
+      narrator("A mech against a wall, or standing in the trees, is harder to hit. A mech that jumps is harder to hit too."),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -165,9 +171,9 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Garrison Command, all units: the town stays Lyran. Lieutenant {is} holds the streets.",
-      clan: "Star Commander {clan}: \"The streets are ours. Raise the Falcon over the town.\"",
-      draw: "Both sides pull out. The streets are empty, and every channel goes quiet.",
+      innerSphere: [garrison("Garrison Command, all units: the town stays Lyran. Lieutenant {is} holds the streets.")],
+      clan: [tag("Star Commander {clan}:"), falcon("\"The streets are ours. Raise the Falcon over the town.\"")],
+      draw: [narrator("Both sides pull out. The streets are empty, and every channel goes quiet.")],
     },
     lesson:
       "New choices: if the card has a jump move, you may jump. A mech that jumped is one harder to hit. A mech touching a building or standing in trees is one harder to hit. This is the teaching version of cover, not the full table.",
@@ -201,8 +207,14 @@ export const SCENARIOS: Scenario[] = [
     title: "Grab the Beacon",
     summary: "Hold the center token. Shooting makes you hot.",
     chapter: "Chapter 3: The Black Box",
-    story:
-      "Garrison Command: our listening post in the middle of town is still transmitting. The token in the center is its beacon. Whoever holds it alone can call down help. For us that means reinforcements. For the Falcons it means their DropShips. Lieutenant {is} has a Phoenix Hawk and a Wasp. Clan channel: \"Star Commander {clan}. Pouncer, Fire Moth, take that beacon.\" Every shot makes a mech Hot, and a Hot mech's next shot needs one more.",
+    story: [
+      garrison(
+        "Garrison Command: our listening post in the middle of town is still transmitting. The token in the center is its beacon. Whoever holds it alone can call down help. For us that means reinforcements. For the Falcons it means their DropShips.",
+      ),
+      narrator("Lieutenant {is} has a Phoenix Hawk and a Wasp. Clan channel:"),
+      falcon("\"Star Commander {clan}. Pouncer, Fire Moth, take that beacon.\"", "Star Commander here. Pouncer, Fire Moth, take that beacon."),
+      narrator("Every shot makes a mech Hot, and a Hot mech's next shot needs one more."),
+    ],
     goal: "Be the only one touching the beacon at the end of a turn to score 1. First to 2 wins. Knocking out every enemy mech also wins.",
     sides: {
       innerSphere: {
@@ -225,9 +237,15 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "The beacon gets through on the Lyran band: \"Garrison, we hear you. Help is coming, Lieutenant {is}.\"",
-      clan: "The beacon calls the Falcon DropShips. Star Commander {clan}: \"The listening post is ours.\"",
-      draw: "The beacon goes quiet. Nobody held it long enough to be heard.",
+      innerSphere: [
+        narrator("The beacon gets through on the Lyran band:"),
+        garrison("\"Garrison, we hear you. Help is coming, Lieutenant {is}.\"", "Garrison, we hear you. Help is coming, Lieutenant."),
+      ],
+      clan: [
+        tag("The beacon calls the Falcon DropShips. Star Commander {clan}:", "The beacon calls the Falcon DropShips."),
+        falcon("\"The listening post is ours.\""),
+      ],
+      draw: [narrator("The beacon goes quiet. Nobody held it long enough to be heard.")],
     },
     lesson:
       "Teaching heat: a mech that shoots is Hot next turn, and its shot needs one more. If it does not shoot, it cools off. A mech alone on the beacon at the end of the turn scores 1. First to 2, or the last side standing.",
@@ -269,8 +287,14 @@ export const SCENARIOS: Scenario[] = [
     title: "How Far",
     summary: "The real range bands: short, medium, and long.",
     chapter: "Chapter 4: The Long Shot",
-    story:
-      "Garrison Command: Falcon assault contact on the open flats. There is nowhere to hide, so distance is the whole fight. Lieutenant {is} brings an Atlas. It is the biggest Lyran mech in the box, and its skull face was built to make enemies afraid. Clan channel: \"Star Commander {clan}, in Warhawk. I will take that Atlas.\" The Inner Sphere calls that mech a Masakari.",
+    story: [
+      garrison("Garrison Command: Falcon assault contact on the open flats."),
+      narrator(
+        "There is nowhere to hide, so distance is the whole fight. Lieutenant {is} brings an Atlas. It is the biggest Lyran mech in the box, and its skull face was built to make enemies afraid. Clan channel:",
+      ),
+      falcon("\"Star Commander {clan}, in Warhawk. I will take that Atlas.\"", "Star Commander here, in Warhawk. I will take that Atlas."),
+      narrator("The Inner Sphere calls that mech a Masakari."),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -293,9 +317,17 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Masakari down. The Atlas is walking off the flats.\" Twycross still has its giant.",
-      clan: "Star Commander {clan}: \"The Atlas has fallen. The flats are ours.\" The Masakari outshot the Lyran giant.",
-      draw: "Both giants fall. Nobody answers on either channel.",
+      innerSphere: [
+        tag("Lieutenant {is}:"),
+        lyran("\"Masakari down. The Atlas is walking off the flats.\""),
+        narrator("Twycross still has its giant."),
+      ],
+      clan: [
+        tag("Star Commander {clan}:"),
+        falcon("\"The Atlas has fallen. The flats are ours.\""),
+        narrator("The Masakari outshot the Lyran giant."),
+      ],
+      draw: [narrator("Both giants fall. Nobody answers on either channel.")],
     },
     lesson:
       "From here on, the number to beat uses the real range bands. Short, up to 6 inches, adds nothing. Medium, past 6 and up to 24, adds 2. Long, past 24 and up to 42, adds 4. Past 42 is too far. Damage still comes from that box on the card.",
@@ -313,8 +345,13 @@ export const SCENARIOS: Scenario[] = [
     title: "They Moved",
     summary: "Add the card's TMM. Standing still is easier.",
     chapter: "Chapter 5: The Fast Ones",
-    story:
-      "Garrison scout net: \"Contact. One Clan light, moving fast across the flats.\" Lieutenant {is} has a Wasp. Star Commander {clan} has a Fire Moth. The Clans call it a Dasher. It is the fastest mech in this box, and one good hit can knock it out. A mech that moves is harder to hit. A mech that stands still is easier to hit, and its own shot is easier.",
+    story: [
+      narrator("Garrison scout net:"),
+      garrison("\"Contact. One Clan light, moving fast across the flats.\""),
+      narrator(
+        "Lieutenant {is} has a Wasp. Star Commander {clan} has a Fire Moth. The Clans call it a Dasher. It is the fastest mech in this box, and one good hit can knock it out. A mech that moves is harder to hit. A mech that stands still is easier to hit, and its own shot is easier.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -337,9 +374,13 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Dasher down.\" The Wasp caught it. Fast is not the same as safe.",
-      clan: "Star Commander {clan}: \"The Wasp is down.\" The Dasher lives. Speed wins this race.",
-      draw: "Both scouts break off and go silent. The race ends even.",
+      innerSphere: [
+        tag("Lieutenant {is}:"),
+        lyran("\"Dasher down.\""),
+        narrator("The Wasp caught it. Fast is not the same as safe."),
+      ],
+      clan: [tag("Star Commander {clan}:"), falcon("\"The Wasp is down.\""), narrator("The Dasher lives. Speed wins this race.")],
+      draw: [narrator("Both scouts break off and go silent. The race ends even.")],
     },
     lesson:
       "TMM is the target movement modifier on the card. A mech that walked or sprinted adds its TMM to the number you need. A mech that moved less than 1 inch stood still: its TMM is 0, and its own shot is one easier.",
@@ -357,8 +398,14 @@ export const SCENARIOS: Scenario[] = [
     title: "Jump Jets",
     summary: "Jumping ignores terrain and changes the shot.",
     chapter: "Chapter 6: Over the Wall",
-    story:
-      "Garrison Command: a town wall stands between our line and theirs. Lieutenant {is} brings a Phoenix Hawk. Clan channel: \"Star Commander {clan}. Pouncer, over the wall.\" Both mechs can jump the wall. Jumping ignores trees and buildings. A jump makes your own shot harder, and it makes you a little harder to hit.",
+    story: [
+      garrison("Garrison Command: a town wall stands between our line and theirs."),
+      narrator("Lieutenant {is} brings a Phoenix Hawk. Clan channel:"),
+      falcon("\"Star Commander {clan}. Pouncer, over the wall.\"", "Star Commander here. Pouncer, over the wall."),
+      narrator(
+        "Both mechs can jump the wall. Jumping ignores trees and buildings. A jump makes your own shot harder, and it makes you a little harder to hit.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -381,9 +428,9 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"The wall is held. The Pouncer is down on the far side.\"",
-      clan: "Star Commander {clan}: \"Over the wall. The Phoenix Hawk could not hold it.\"",
-      draw: "Both jumpers fall. The wall stands empty.",
+      innerSphere: [tag("Lieutenant {is}:"), lyran("\"The wall is held. The Pouncer is down on the far side.\"")],
+      clan: [tag("Star Commander {clan}:"), falcon("\"Over the wall. The Phoenix Hawk could not hold it.\"")],
+      draw: [narrator("Both jumpers fall. The wall stands empty.")],
     },
     lesson:
       "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it.",
@@ -401,8 +448,17 @@ export const SCENARIOS: Scenario[] = [
     title: "Trees and Walls",
     summary: "Movement cost, woods, and partial cover.",
     chapter: "Chapter 7: The Orchard",
-    story:
-      "Garrison Command: the Mad Cat from the duel is back, in the orchards outside town. Lieutenant {is} takes the Warhammer in after it. Clan channel: \"Star Commander {clan}. We finish what we began, Lieutenant.\" Both pilots have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
+    story: [
+      garrison("Garrison Command: the Mad Cat from the duel is back, in the orchards outside town."),
+      narrator("Lieutenant {is} takes the Warhammer in after it. Clan channel:"),
+      falcon(
+        "\"Star Commander {clan}. We finish what we began, Lieutenant.\"",
+        "Star Commander here. We finish what we began, Lieutenant.",
+      ),
+      narrator(
+        "Both pilots have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -425,9 +481,9 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Mad Cat down in the trees.\" The orchard stays Lyran.",
-      clan: "Star Commander {clan}: \"The Warhammer lies in the orchard. This ground is ours.\"",
-      draw: "Both mechs fall among the trees. The orchard goes quiet.",
+      innerSphere: [tag("Lieutenant {is}:"), lyran("\"Mad Cat down in the trees.\""), narrator("The orchard stays Lyran.")],
+      clan: [tag("Star Commander {clan}:"), falcon("\"The Warhammer lies in the orchard. This ground is ours.\"")],
+      draw: [narrator("Both mechs fall among the trees. The orchard goes quiet.")],
     },
     lesson:
       "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. Jumping skips those costs. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover.",
@@ -458,8 +514,12 @@ export const SCENARIOS: Scenario[] = [
     title: "The Heat Scale",
     summary: "Overheat adds damage now and heat at the end.",
     chapter: "Chapter 8: The Salt Flats",
-    story:
-      "Garrison Command: the Falcons have pushed us onto the salt flats. It is hot out here. Mechs carry fusion engines, and every shot makes them hotter. Star Commander {clan}'s Nova has more guns than it can keep cool. Lieutenant {is} answers in the Warhammer.",
+    story: [
+      garrison("Garrison Command: the Falcons have pushed us onto the salt flats. It is hot out here."),
+      narrator(
+        "Mechs carry fusion engines, and every shot makes them hotter. Star Commander {clan}'s Nova has more guns than it can keep cool. Lieutenant {is} answers in the Warhammer.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -482,9 +542,17 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"The Nova cooked itself.\" The Warhammer still has heat to spare.",
-      clan: "Star Commander {clan}: \"The Warhammer is down.\" The Nova's guns finished it before the heat could shut them down.",
-      draw: "Both mechs go dark in the heat. The salt flats win.",
+      innerSphere: [
+        tag("Lieutenant {is}:"),
+        lyran("\"The Nova cooked itself.\""),
+        narrator("The Warhammer still has heat to spare."),
+      ],
+      clan: [
+        tag("Star Commander {clan}:"),
+        falcon("\"The Warhammer is down.\""),
+        narrator("The Nova's guns finished it before the heat could shut them down."),
+      ],
+      draw: [narrator("Both mechs go dark in the heat. The salt flats win.")],
     },
     lesson:
       "The OV on the card is how much extra damage you may add at short or medium range. You choose it before you roll. At the end of the turn, mark that much heat. Your heat is added to your next weapon shot. Twice your heat comes off your walk inches. At heat 2 or more, TMM drops by 1 unless you jump. Heat 4 shuts the mech down for a turn. If you do not shoot, erase the heat. Water cools one heat if you did shoot.",
@@ -502,8 +570,13 @@ export const SCENARIOS: Scenario[] = [
     title: "Bubbles and Breaks",
     summary: "Rear hits and the critical hit table.",
     chapter: "Chapter 9: The Back Armor",
-    story:
-      "Garrison tech, before the drop: \"Armor is the metal skin. Structure is the bones underneath.\" Lieutenant {is}'s Atlas has a lot of both. Star Commander {clan}'s Warhawk does too. A hit in the back marks one extra bubble. When the red structure bubbles get marked, something inside can break. That is a critical hit.",
+    story: [
+      narrator("Garrison tech, before the drop:"),
+      garrison("\"Armor is the metal skin. Structure is the bones underneath.\""),
+      narrator(
+        "Lieutenant {is}'s Atlas has a lot of both. Star Commander {clan}'s Warhawk does too. A hit in the back marks one extra bubble. When the red structure bubbles get marked, something inside can break. That is a critical hit.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -526,9 +599,9 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Hit the Masakari in the back. Structure breached. It is down.\"",
-      clan: "Star Commander {clan}: \"The Atlas is broken open. Even a giant has bones.\"",
-      draw: "Both assault mechs break. The crits take them together.",
+      innerSphere: [tag("Lieutenant {is}:"), lyran("\"Hit the Masakari in the back. Structure breached. It is down.\"")],
+      clan: [tag("Star Commander {clan}:"), falcon("\"The Atlas is broken open. Even a giant has bones.\"")],
+      draw: [narrator("Both assault mechs break. The crits take them together.")],
     },
     lesson:
       "A hit in the back of the base marks one extra bubble. Armor bubbles go first, then red structure bubbles. If structure is marked and the mech is still standing, roll two dice and read the critical hit table on the tables card in the box. A roll of 12 does that even if only armor was marked. The mech comes off the table when the last structure bubble is marked.",
@@ -546,8 +619,12 @@ export const SCENARIOS: Scenario[] = [
     title: "Up Close",
     summary: "You punch when the bases are touching. You do not shoot.",
     chapter: "Chapter 10: Fist Range",
-    story:
-      "Garrison Command: the Falcons followed us into a narrow cut of the Great Gash, the huge canyon on Twycross. In here the mechs get too close to shoot. Lieutenant {is} brings a Wraith, a fast mech with fists. Star Commander {clan} brings the Nova. When the bases touch, you punch. You do not shoot.",
+    story: [
+      garrison("Garrison Command: the Falcons followed us into a narrow cut of the Great Gash, the huge canyon on Twycross."),
+      narrator(
+        "In here the mechs get too close to shoot. Lieutenant {is} brings a Wraith, a fast mech with fists. Star Commander {clan} brings the Nova. When the bases touch, you punch. You do not shoot.",
+      ),
+    ],
     goal: "Knock out every enemy mech.",
     sides: {
       innerSphere: {
@@ -570,9 +647,13 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "Lieutenant {is}: \"Got inside its guns. The Nova is down.\" Fists win the canyon.",
-      clan: "Star Commander {clan}: \"The Wraith never landed its punch.\" The Nova kept just enough room to shoot.",
-      draw: "They meet in the middle and both fall. The Gash keeps the wrecks.",
+      innerSphere: [tag("Lieutenant {is}:"), lyran("\"Got inside its guns. The Nova is down.\""), narrator("Fists win the canyon.")],
+      clan: [
+        tag("Star Commander {clan}:"),
+        falcon("\"The Wraith never landed its punch.\""),
+        narrator("The Nova kept just enough room to shoot."),
+      ],
+      draw: [narrator("They meet in the middle and both fall. The Gash keeps the wrecks.")],
     },
     lesson:
       "If the bases are touching, you cannot shoot that mech. A punch reaches 1 inch, hits on the skill number plus the usual movement and cover modifiers, and marks bubbles equal to the mech's size. If the card says MEL, that melee reach is 2 inches and the damage is size plus 1. You cannot punch and shoot in the same turn.",
@@ -596,8 +677,17 @@ export const SCENARIOS: Scenario[] = [
     title: "The Whole Turn",
     summary: "Every quick-start step, plus a beacon.",
     chapter: "Chapter 11: The Whole Star",
-    story:
-      "Garrison Command, all units: the edge of town, and the listening post beacon is back in the center. Lieutenant {is} has the Warhammer and the Phoenix Hawk. Clan channel: \"Star Commander {clan}. Timber Wolf, Pouncer. Take the beacon and Twycross falls.\" Every lesson comes together here. This is a full quick-start turn: move, shoot, heat, the back armor, crits, punches, sprints, and charges.",
+    story: [
+      garrison("Garrison Command, all units: the edge of town, and the listening post beacon is back in the center."),
+      narrator("Lieutenant {is} has the Warhammer and the Phoenix Hawk. Clan channel:"),
+      falcon(
+        "\"Star Commander {clan}. Timber Wolf, Pouncer. Take the beacon and Twycross falls.\"",
+        "Star Commander here. Timber Wolf, Pouncer. Take the beacon and Twycross falls.",
+      ),
+      narrator(
+        "Every lesson comes together here. This is a full quick-start turn: move, shoot, heat, the back armor, crits, punches, sprints, and charges.",
+      ),
+    ],
     goal: "Be the only one touching the beacon at the end of a turn to score 1. First to 2 wins. Knocking out every enemy mech also wins.",
     sides: {
       innerSphere: {
@@ -620,9 +710,15 @@ export const SCENARIOS: Scenario[] = [
       },
     },
     ending: {
-      innerSphere: "The beacon reaches the Lyran line. Lieutenant {is}: \"Garrison, Twycross holds for one more day.\"",
-      clan: "The beacon calls the Falcons down. Star Commander {clan}: \"Twycross belongs to Clan Jade Falcon.\"",
-      draw: "The beacon goes quiet. Neither side holds Twycross tonight.",
+      innerSphere: [
+        tag("The beacon reaches the Lyran line. Lieutenant {is}:", "The beacon reaches the Lyran line."),
+        lyran("\"Garrison, Twycross holds for one more day.\""),
+      ],
+      clan: [
+        tag("The beacon calls the Falcons down. Star Commander {clan}:", "The beacon calls the Falcons down."),
+        falcon("\"Twycross belongs to Clan Jade Falcon.\""),
+      ],
+      draw: [narrator("The beacon goes quiet. Neither side holds Twycross tonight.")],
     },
     lesson:
       "This is the whole quick-start turn from the box: initiative, move, the shot number, heat, rear, crits, punches, sprints, charges, and death from above. Sprint is one and a half times the walk inches, rounded up, and that mech cannot shoot. A charge is declared while moving, only at a mech that already moved, and you must end touching it. Read any special ability on the card out loud and use the card. The tables card still decides crits. Formations, pilot cards, and battlefield support stay in the box for another day.",
@@ -673,7 +769,10 @@ export const SCENARIOS: Scenario[] = [
   },
 ]
 
-const byId = new Map(SCENARIOS.map((scenario) => [scenario.id, scenario]))
+// Every scenario with a fixed script: the box chapters, then the mission pack.
+export const CATALOG: Scenario[] = [...SCENARIOS, ...MISSIONS]
+
+const byId = new Map(CATALOG.map((scenario) => [scenario.id, scenario]))
 
 export function getScenario(id: string): Scenario | undefined {
   return byId.get(id)
@@ -693,4 +792,5 @@ export const GROUP_LABEL: Record<Group, string> = {
   teaching: "Basic training",
   real: "Field rules, one at a time",
   graduation: "Full engagement",
+  missions: "Twycross missions, solo or with a friend",
 }

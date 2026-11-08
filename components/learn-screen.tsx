@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
+import { CATALOG, GROUP_LABEL } from "@/lib/game/scenarios"
 import type { Group } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { loadRecaps } from "@/lib/recaps"
@@ -10,7 +11,7 @@ import { AccountPanel } from "./account-panel"
 import { AppFrame } from "./app-frame"
 import { FactionPicker, usePlayer } from "./use-player"
 
-const GROUPS: Group[] = ["teaching", "real", "graduation"]
+const GROUPS: Group[] = ["teaching", "real", "graduation", "missions"]
 
 export function LearnScreen() {
   const router = useRouter()
@@ -48,7 +49,7 @@ export function LearnScreen() {
   }
 
   return (
-    <AppFrame title="Learn" lede="The Twycross campaign. Eleven missions from the box, one new rule each.">
+    <AppFrame title="Learn" lede="The Twycross campaign. Eleven chapters from the box, one new rule each, then voiced missions on fixed maps.">
       <section className="panel">
         <label>
           Pilot name
@@ -64,8 +65,9 @@ export function LearnScreen() {
       {GROUPS.map((group) => (
         <section className="scenario-group" key={group}>
           <p className="group-title">{GROUP_LABEL[group]}</p>
-          {SCENARIOS.filter((scenario) => scenario.group === group).map((scenario) => (
-            <article key={scenario.id} className="chapter">
+          {CATALOG.filter((scenario) => scenario.group === group).map((scenario) => (
+            <article key={scenario.id} className={`chapter${scenario.art ? " has-art" : ""}`}>
+              {scenario.art ? <img className="chapter-art" src={scenario.art.src} alt={scenario.art.alt} /> : null}
               <div>
                 <strong>{scenario.title}</strong>
                 {badges[scenario.id] ? <span className="badge">{badges[scenario.id]}</span> : null}
@@ -85,6 +87,9 @@ export function LearnScreen() {
         </section>
       ))}
       {error ? <p className="error">{error}</p> : null}
+      <p>
+        <Link className="credits-link" href="/credits">Credits for the voices, faces and art</Link>
+      </p>
     </AppFrame>
   )
 }

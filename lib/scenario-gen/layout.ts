@@ -201,6 +201,46 @@ export function generateLayout(input: {
   }
 }
 
+export type FixedPiece = { kind: TerrainKind; x: number; y: number; role: PieceRole }
+
+// A hand-drawn 3 by 4 table. `pair` mirrors a host piece onto the guest half.
+export function fixedLayout(seed: string, pieces: FixedPiece[], objectives: MapObjective[]): Layout {
+  const table = TABLES["3x4"]
+  return {
+    width: table.width,
+    depth: table.depth,
+    zoneDepth: ZONE,
+    seed,
+    pieces: pieces.map((piece, index) => {
+      const spec = SPECS[piece.kind]
+      return {
+        id: `p${index + 1}`,
+        kind: piece.kind,
+        x: piece.x,
+        y: piece.y,
+        w: spec.w,
+        h: spec.h,
+        label: spec.label,
+        number: index + 1,
+        blocksLos: spec.blocksLos,
+        role: piece.role,
+      }
+    }),
+    objectives,
+  }
+}
+
+export function pair(kind: TerrainKind, x: number, y: number): FixedPiece[] {
+  const table = TABLES["3x4"]
+  const spec = SPECS[kind]
+  return [
+    { kind, x, y, role: "host" },
+    { kind, x: table.width - x - spec.w, y: table.depth - y - spec.h, role: "guest" },
+  ]
+}
+
+export const PIECE_GAP = GAP
+
 function placeObjectives(
   objective: ObjectiveType,
   pieces: LayoutPiece[],
