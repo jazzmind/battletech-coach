@@ -7,8 +7,11 @@ import { SCENARIOS } from "@/lib/game/scenarios"
 import type { Action, GameState, Screen } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { rememberGame } from "@/lib/recent"
+import { recapOf, saveRecap } from "@/lib/recaps"
 import { DraftPanel } from "./draft-panel"
+import { GameToolbar } from "./game-toolbar"
 import { Mark } from "./mark"
+import { Modal } from "./modal"
 import { TableLook } from "./table-look"
 import { TableMap } from "./table-map"
 
@@ -21,6 +24,8 @@ export function CoachScreen({ code }: { code: string }) {
   const [name, setName] = useState("")
   const [poolFor, setPoolFor] = useState<string | null>(null)
   const [lookOpen, setLookOpen] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [mechsOpen, setMechsOpen] = useState(false)
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
@@ -62,7 +67,8 @@ export function CoachScreen({ code }: { code: string }) {
       scenario: state.customScenario?.title ?? scenario?.title ?? state.scenarioId,
       turn: state.phase === "over" ? "Finished" : state.turn > 0 ? `Turn ${state.turn}` : "Setup",
     })
-  }, [state])
+    if (state.phase === "over" && playerId) saveRecap(recapOf(state, playerId))
+  }, [state, playerId])
 
   async function send(action: Action, version = state?.version) {
     if (!playerId || version == null) return
@@ -148,6 +154,8 @@ export function CoachScreen({ code }: { code: string }) {
   }
 
   const screen = present(state, playerId)
+  const showDock = !screen.over && (screen.choices.length > 0 || Boolean(screen.pad) || Boolean(screen.wait) || Boolean(error))
+  const playerName = state.players.find((player) => player.id === playerId)?.name ?? name
   return (
     <main className="wrap table">
       <header className="top">
@@ -158,16 +166,19 @@ export function CoachScreen({ code }: { code: string }) {
             <p>{screen.hud.scenario}</p>
           </div>
         </div>
-        <div className="top-actions">
-          <Link href="/" className="games-link">Games</Link>
-          <div className="code-pill" data-testid="room-code">{screen.code}</div>
-        </div>
+        <div className="code-pill" data-testid="room-code">{screen.code}</div>
       </header>
       <div className="play">
-        <aside className={`hud${lookOpen ? " look-open" : ""}`}>
-          <h2>{screen.hud.turn}</h2>
-          <p className="meta">{screen.hud.scenario}</p>
-          {screen.hud.goal ? <p className="goal" data-testid="goal">{screen.hud.goal}</p> : null}
+        <aside className="hud">
+          <button type="button" className="hud-strip" onClick={() => setMechsOpen(true)}>
+            <span>{screen.hud.turn}</span>
+            <span>{screen.hud.goal ?? screen.hud.scenario}</span>
+          </button>
+          <div className="hud-head">
+            <h2>{screen.hud.turn}</h2>
+            <p className="meta">{screen.hud.scenario}</p>
+            {screen.hud.goal ? <p className="goal" data-testid="goal">{screen.hud.goal}</p> : null}
+          </div>
           <div className="hud-body">
           {screen.hud.rows.map((row) => (
             <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
@@ -176,25 +187,15 @@ export function CoachScreen({ code }: { code: string }) {
             </div>
           ))}
           </div>
-          <div className="hud-tools">
-            {screen.undo ? (
-              <button
-                className="icon-btn"
-                type="button"
-                aria-label="Undo last tap"
-                title="Undo last tap"
-                disabled={busy}
-                onClick={() => void send(screen.undo as Action)}
-              >
-                <UndoIcon />
-              </button>
-            ) : null}
-            <TableLook
-              screen={screen}
-              playerName={state.players.find((player) => player.id === playerId)?.name ?? name}
-              onOpenChange={setLookOpen}
-            />
-          </div>
+          <GameToolbar
+            code={screen.code}
+            busy={busy}
+            undo={screen.undo}
+            hasMap={Boolean(screen.map)}
+            onUndo={() => void send(screen.undo as Action)}
+            onMap={() => setMapOpen(true)}
+            onLook={() => setLookOpen(true)}
+          />
         </aside>
         <section className="stage">
           <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={`${screen.say}:${screen.tip?.title ?? ""}:${screen.mission?.chapter ?? ""}`}>
@@ -288,13 +289,25 @@ export function CoachScreen({ code }: { code: string }) {
               ))}
             </div>
           ) : null}
+          {screen.over ? (
+            <div className="end-actions">
+              <button type="button" className="primary" onClick={() => saveRecap(recapOf(state, playerId))}>
+                Save to History
+              </button>
+              <Link href={`/history/${screen.code}`} className="ghost back-link">
+                Open the record
+              </Link>
+              <Link href="/" className="ghost back-link">All games</Link>
+            </div>
+          ) : null}
           {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
           </ScrollPane>
+        </section>
+        {showDock ? (
           <ScrollPane className={`dock button-pane${screen.active ? " live" : ""}`} testId="dock" more="More buttons below" watch={`${screen.title}:${screen.choices.length}:${screen.pad?.label ?? ""}`}>
-            <p className="pane-tag">Buttons</p>
             <p className={`cue${screen.active ? " yours" : ""}`} data-testid="cue">
               <i />
-              {busy ? "Sending that tap…" : screen.active ? "Your turn. Tap a button." : screen.wait ? screen.wait : screen.over ? "The fight is over." : "Watch the table."}
+              {busy ? "Sending that tap…" : screen.active ? "Your turn. Tap a button." : screen.wait ? screen.wait : "Watch the table."}
             </p>
             {error ? (
               <div className="error">
@@ -319,12 +332,23 @@ export function CoachScreen({ code }: { code: string }) {
               </div>
             ) : null}
             {screen.pad ? <Pad screen={screen} disabled={busy} onPick={(value) => void send(padAction(screen, playerId, value))} /> : null}
-            {screen.over ? (
-              <Link href="/" className="primary back-link">All games</Link>
-            ) : null}
           </ScrollPane>
-        </section>
+        ) : null}
       </div>
+      <TableLook screen={screen} playerName={playerName} open={lookOpen} onClose={() => setLookOpen(false)} />
+      {screen.map ? (
+        <Modal open={mapOpen} title="The table" onClose={() => setMapOpen(false)}>
+          <TableMap map={screen.map} />
+        </Modal>
+      ) : null}
+      <Modal open={mechsOpen} title="The mechs" onClose={() => setMechsOpen(false)}>
+        {screen.hud.rows.map((row) => (
+          <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
+            <span className="who">{row.name}</span>
+            <span className="detail">{row.detail}</span>
+          </div>
+        ))}
+      </Modal>
     </main>
   )
 }
@@ -393,21 +417,6 @@ function ScrollPane({
       {children}
       {hasMore ? <p className="more-hint">{more}</p> : null}
     </div>
-  )
-}
-
-function UndoIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 8H4v4M4.5 8.5A8 8 0 1 1 6 18"
-      />
-    </svg>
   )
 }
 

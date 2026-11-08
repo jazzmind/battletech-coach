@@ -17,6 +17,7 @@ import type {
   AttackKind,
   CardField,
   CombatState,
+  Faction,
   GameState,
   Mech,
   Player,
@@ -60,6 +61,7 @@ export function createGame(input: {
     objectiveIndex: 0,
     pools: {},
     skipped: {},
+    log: [],
   }
 }
 
@@ -111,6 +113,7 @@ export function createPickupGame(input: {
     objectiveIndex: 0,
     pools: {},
     skipped: {},
+    log: [],
   }
 }
 
@@ -158,6 +161,21 @@ export function applyAction(state: GameState, action: Action): GameState {
 
 export function rulesOf(state: GameState): Rules {
   return scenarioOf(state).rules
+}
+
+function logEvent(state: GameState, text: string, side?: Faction) {
+  if (!state.log) state.log = []
+  state.log.push({ turn: state.turn, text, side })
+  if (state.log.length > 300) state.log.splice(0, state.log.length - 300)
+}
+
+function recordHit(state: GameState) {
+  const combat = state.combat
+  if (!combat?.targetId || combat.totalDamage == null) return
+  const attacker = requireMech(state, combat.attackerId)
+  const target = requireMech(state, combat.targetId)
+  const owner = state.players.find((player) => player.id === attacker.ownerId)
+  logEvent(state, `the ${attacker.name} hit the ${target.name} for ${combat.totalDamage}`, owner?.faction)
 }
 
 export function cleanName(name: string): string {
@@ -476,6 +494,7 @@ function onInitiative(state: GameState, action: Extract<Action, { type: "initiat
   const high = low.id === first.id ? second : first
   state.lowPlayerId = low.id
   state.highPlayerId = high.id
+  logEvent(state, `${low.name} moves first.`, low.faction)
   beginMove(state)
 }
 
@@ -662,6 +681,7 @@ function onYesNo(state: GameState, action: Extract<Action, { type: "yesNo" }>) {
       return
     }
     if (action.yes && combat.totalDamage != null) combat.totalDamage += 1
+    recordHit(state)
     state.step = "bubbles"
     return
   }
@@ -731,6 +751,13 @@ function onDice(state: GameState, action: Extract<Action, { type: "dice" }>) {
   const weapon = combat.kind === "weapon"
   mech.shotThisTurn = weapon
   if (action.roll < combat.targetNumber) {
+    const target = state.mechs.find((item) => item.id === combat.targetId)
+    const owner = state.players.find((player) => player.id === mech.ownerId)
+    logEvent(
+      state,
+      target ? `the ${mech.name} missed the ${target.name}.` : `the ${mech.name} missed.`,
+      owner?.faction,
+    )
     if (combat.kind === "dfa") {
       combat.selfDamage = (mech.size ?? 1) + 1
       state.step = "self"
@@ -798,7 +825,7 @@ function onMarked(state: GameState, action: Extract<Action, { type: "marked" }>)
   if (!combat?.targetId) throw new RuleError("The attack was lost. Undo and try again.")
   const target = requireMech(state, combat.targetId)
   if (action.result === "out") {
-    destroyMech(target)
+    destroyMech(state, target)
     if (checkWin(state)) return
     afterTarget(state)
     return
@@ -822,7 +849,7 @@ function onSelfMarked(state: GameState, result: "armor" | "structure" | "out") {
   const attacker = requireMech(state, combat.attackerId)
   combat.selfDone = true
   if (result === "out") {
-    destroyMech(attacker)
+    destroyMech(state, attacker)
     if (checkWin(state)) return
     afterTarget(state)
     return
@@ -844,6 +871,17 @@ function onCrit(state: GameState, action: Extract<Action, { type: "crit" }>) {
   const mech =
     combat.critFor === "self" ? requireMech(state, combat.attackerId) : requireMech(state, combat.targetId)
   combat.critDone = true
+  const critLabel: Record<string, string> = {
+    none: "no effect",
+    weapon: "a weapon hit",
+    fireControl: "a fire-control hit",
+    mp: "a movement hit",
+    engine: "an engine hit",
+    ammo: "an ammo hit",
+    destroyed: "the mech is destroyed",
+  }
+  const owner = state.players.find((player) => player.id === mech.ownerId)
+  logEvent(state, `Crit on the ${mech.name}: ${critLabel[action.effect] ?? action.effect}.`, owner?.faction)
   if (action.effect === "none") {
     afterCrit(state)
     return
@@ -853,9 +891,9 @@ function onCrit(state: GameState, action: Extract<Action, { type: "crit" }>) {
   if (action.effect === "mp") mech.mpHits += 1
   if (action.effect === "engine") {
     mech.engineHits += 1
-    if (mech.engineHits >= 2) destroyMech(mech)
+    if (mech.engineHits >= 2) destroyMech(state, mech)
   }
-  if (action.effect === "destroyed") destroyMech(mech)
+  if (action.effect === "destroyed") destroyMech(state, mech)
   if (action.effect === "ammo") {
     state.step = "ammo"
     return
@@ -872,7 +910,7 @@ function onAmmo(state: GameState, action: Extract<Action, { type: "ammo" }>) {
   const mech =
     combat.critFor === "self" ? requireMech(state, combat.attackerId) : requireMech(state, combat.targetId)
   if (action.result === "destroyed") {
-    destroyMech(mech)
+    destroyMech(state, mech)
     if (checkWin(state)) return
     afterCrit(state)
     return
@@ -928,6 +966,7 @@ function onBeacon(state: GameState, action: Extract<Action, { type: "beacon" }>)
   } else {
     headline = `Nobody scores ${current.label}.`
   }
+  logEvent(state, headline)
   if (current && state.objectiveIndex + 1 < objectives.length) {
     state.objectiveIndex += 1
     state.beaconAnswers = {}
@@ -1117,7 +1156,7 @@ function onAmmoMarked(state: GameState, result: "armor" | "structure" | "out") {
   const mech =
     combat.critFor === "self" ? requireMech(state, combat.attackerId) : requireMech(state, combat.targetId)
   if (result === "out") {
-    destroyMech(mech)
+    destroyMech(state, mech)
     if (checkWin(state)) return
     afterCrit(state)
     return
@@ -1173,6 +1212,7 @@ function resolvePhysicalHit(state: GameState) {
     state.step = "rear"
     return
   }
+  recordHit(state)
   state.step = "bubbles"
 }
 
@@ -1236,6 +1276,7 @@ function applyHeat(state: GameState) {
 function startInitiative(state: GameState) {
   if (checkWin(state)) return
   state.turn += 1
+  logEvent(state, `Turn ${state.turn}.`)
   state.phase = "initiative"
   state.step = "roll"
   state.initiative = {}
@@ -1252,6 +1293,8 @@ function checkWin(state: GameState): boolean {
   state.step = "done"
   state.winnerId = winner.id
   state.winReason = winner.reason
+  const seat = state.players.find((player) => player.id === winner.id)
+  logEvent(state, `${seat?.name ?? "A side"} wins. ${winner.reason}`, seat?.faction)
   return true
 }
 
@@ -1411,6 +1454,7 @@ function finishWeaponDamage(state: GameState, cardDamage: number) {
   if (!combat?.range) throw new RuleError("The attack was lost. Undo and try again.")
   combat.cardDamage = cardDamage
   combat.totalDamage = weaponBubbles(cardDamage, combat.overheat, combat.rear, combat.range)
+  recordHit(state)
   if (rulesOf(state).retreat) {
     applyLessonHit(state)
     return
@@ -1556,9 +1600,12 @@ function blankMech(id: string, name: string, ownerId: string): Mech {
   }
 }
 
-function destroyMech(mech: Mech) {
+function destroyMech(state: GameState, mech: Mech) {
+  if (mech.knockedOut) return
   mech.knockedOut = true
   mech.shutdown = false
+  const owner = state.players.find((player) => player.id === mech.ownerId)
+  logEvent(state, `the ${mech.name} was knocked out`, owner?.faction)
 }
 
 function remainingMechs(state: GameState, playerId: string): Mech[] {

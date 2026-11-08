@@ -3,25 +3,21 @@
 import { useEffect, useRef, useState } from "react"
 import { lookPrompt } from "@/lib/game/look"
 import type { Screen } from "@/lib/game/types"
-import { TableMap } from "./table-map"
+import { Modal } from "./modal"
 
 const KEY = "mech-coach-xai-key"
 
 export function TableLook({
   screen,
   playerName,
-  onOpenChange,
+  open,
+  onClose,
 }: {
   screen: Screen
   playerName: string
-  onOpenChange?: (open: boolean) => void
+  open: boolean
+  onClose: () => void
 }) {
-  const [open, setOpen] = useState(false)
-
-  function setLookOpen(next: boolean) {
-    setOpen(next)
-    onOpenChange?.(next)
-  }
   const [storedKey, setStoredKey] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
   const [reply, setReply] = useState<string | null>(null)
@@ -120,22 +116,14 @@ export function TableLook({
     await sendPhoto(blob)
   }
 
+  function close() {
+    stopCamera()
+    onClose()
+  }
+
   return (
-    <>
-      <button
-        className={`icon-btn${open ? " pressed" : ""}`}
-        type="button"
-        data-testid="look-open"
-        aria-label="Look at my side"
-        title="Look at my side"
-        aria-pressed={open}
-        onClick={() => setLookOpen(!open)}
-      >
-        <LookIcon />
-      </button>
-      {open ? (
+    <Modal open={open} title="A look, not a referee" onClose={close}>
     <section className="look" data-testid="look">
-      {screen.map?.where === "look" ? <TableMap map={screen.map} /> : null}
       <p className="kicker">A look, not a referee</p>
       <p>The cards, the dice, and the tape still decide.</p>
       {storedKey ? (
@@ -194,26 +182,8 @@ export function TableLook({
       )}
       {error ? <p className="error">{error}</p> : null}
       {reply ? <p className="look-reply" data-testid="look-reply">{reply}</p> : null}
-      <button className="ghost" type="button" onClick={() => { stopCamera(); setLookOpen(false) }}>
-        Close
-      </button>
     </section>
-      ) : null}
-    </>
-  )
-}
-
-function LookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
-      />
-      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
+    </Modal>
   )
 }
 

@@ -35,9 +35,15 @@ export async function getRoom(code: string): Promise<GameState | null> {
   if (redisReady()) {
     const redis = await client()
     const value = await redis.get<GameState>(roomKey(id))
-    return value ?? null
+    return value ? withLog(value) : null
   }
-  return memory.get(id) ?? null
+  const stored = memory.get(id)
+  return stored ? withLog(stored) : null
+}
+
+function withLog(state: GameState): GameState {
+  if (!state.log) state.log = []
+  return state
 }
 
 export async function updateRoom(

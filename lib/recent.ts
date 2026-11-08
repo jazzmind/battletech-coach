@@ -28,3 +28,7 @@ export function saveRecent(list: RecentGame[]): void {
 export function rememberGame(next: RecentGame): void {
   saveRecent(remember(loadRecent(), next))
 }
+
+export function forgetRecent(code: string): void {
+  saveRecent(loadRecent().filter((game) => game.code !== code))
+}

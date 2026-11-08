@@ -4,6 +4,8 @@ import type { Layout, ObjectiveType, PickupInventory, TableSize } from "../scena
 
 export type Faction = "innerSphere" | "clan"
 
+export type LogEntry = { turn: number; text: string; side?: Faction }
+
 export type MoveMode = "stand" | "walk" | "jump" | "sprint" | "charge" | "dfa"
 
 export type RangeBand = "short" | "medium" | "long"
@@ -176,6 +178,7 @@ export type GameState = {
   }
   pools: Record<string, string[]>
   skipped: Record<string, string[]>
+  log: LogEntry[]
   notice?: string
   winnerId?: string
   winReason?: string
