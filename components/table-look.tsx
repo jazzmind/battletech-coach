@@ -122,7 +122,7 @@ export function TableLook({
   }
 
   return (
-    <Modal open={open} title="A look, not a referee" onClose={close}>
+    <Modal open={open} title="Look at the table" onClose={close}>
     <section className="look" data-testid="look">
       <p className="kicker">A look, not a referee</p>
       <p>The cards, the dice, and the tape still decide.</p>

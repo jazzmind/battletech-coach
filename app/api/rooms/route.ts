@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     name?: string
     faction?: string
     playerId?: string
+    solo?: boolean
     kind?: string
     budget?: number
     table?: string
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
         hostId: playerId,
         hostName: body.name ?? "",
         faction,
+        solo: body.solo === true,
       })
       try {
         await createRoom(state)

@@ -7,15 +7,17 @@ import { Mark } from "./mark"
 export function AppFrame({
   title,
   lede,
+  nav = true,
   children,
 }: {
   title: string
   lede?: string
+  nav?: boolean
   children: ReactNode
 }) {
   return (
-    <div className="app-frame">
-      <AppNav />
+    <div className={`app-frame${nav ? "" : " bare"}`}>
+      {nav ? <AppNav /> : null}
       <main className="wrap">
         <header className="top">
           <div className="brand">

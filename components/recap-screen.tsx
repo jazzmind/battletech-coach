@@ -15,17 +15,17 @@ export function RecapScreen({ code }: { code: string }) {
 
   if (recap === undefined) {
     return (
-      <AppFrame title="Record">
-        <p>Opening the record…</p>
+      <AppFrame title="After-action report">
+        <p>Pulling the report…</p>
       </AppFrame>
     )
   }
   if (!recap) {
     return (
-      <AppFrame title="No record">
-        <p>This device has no record of {code}.</p>
+      <AppFrame title="No report on file">
+        <p>This device has no report for battle {code}.</p>
         <Link href="/history" className="ghost back-link">
-          History
+          Back to History
         </Link>
       </AppFrame>
     )
@@ -37,17 +37,18 @@ export function RecapScreen({ code }: { code: string }) {
     bucket.push(line)
     turns.set(line.turn, bucket)
   }
+  const verdict = recap.winner ? `Victory: ${recap.winner}` : "No victor"
 
   return (
-    <AppFrame title={recap.winner ? `${recap.winner} wins` : "Nobody lost"} lede={recap.chapter}>
+    <AppFrame title="After-action report" lede={`${recap.title} · ${recap.chapter} · ${recap.code}`}>
       <article className="say">
-        <p className="kicker">{recap.title}</p>
-        <h2>{recap.winner ? `${recap.winner} wins` : "Nobody lost"}</h2>
+        <p className="kicker">Outcome</p>
+        <h2>{verdict}</h2>
         <p className="aloud">{recap.happened}</p>
       </article>
       {recap.ending ? <p className="ending">{recap.ending}</p> : null}
       <section className="panel">
-        <h2>The mechs</h2>
+        <h2>Final status</h2>
         {recap.mechs.map((mech) => (
           <div key={`${mech.owner}-${mech.name}`} className={`row${mech.knockedOut ? " out" : ""}`}>
             <span className="who">{mech.owner}&apos;s {mech.name}</span>
@@ -56,17 +57,17 @@ export function RecapScreen({ code }: { code: string }) {
                 ? "Knocked out"
                 : mech.armorLeft != null
                   ? `${mech.armorLeft} armor · ${mech.structureLeft ?? 0} structure`
-                  : "Stayed on the table"}
+                  : "Still standing"}
             </span>
           </div>
         ))}
       </section>
       {recap.log.length > 0 ? (
         <section className="panel">
-          <h2>The record</h2>
+          <h2>Battle log</h2>
           {[...turns.entries()].map(([turn, lines]) => (
             <div key={turn} className="log-turn">
-              <p className="kicker">{turn > 0 ? `Turn ${turn}` : "Setup"}</p>
+              <p className="kicker">{turn > 0 ? `Turn ${turn}` : "Deployment"}</p>
               {lines.map((line, index) => (
                 <p key={`${turn}-${index}`} className={`log-line${line.side ? ` log-${line.side}` : ""}`}>
                   {line.text}
@@ -76,10 +77,10 @@ export function RecapScreen({ code }: { code: string }) {
           ))}
         </section>
       ) : (
-        <p className="note">This fight was saved before the turn record. The summary above is the whole record.</p>
+        <p className="note">This report was filed before the battle log existed. The outcome above is the whole record.</p>
       )}
       <Link href="/history" className="ghost back-link">
-        History
+        Back to History
       </Link>
     </AppFrame>
   )

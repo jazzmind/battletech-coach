@@ -6,6 +6,7 @@ import { GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
 import type { Group } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { loadRecaps } from "@/lib/recaps"
+import { AccountPanel } from "./account-panel"
 import { AppFrame } from "./app-frame"
 import { FactionPicker, usePlayer } from "./use-player"
 
@@ -14,15 +15,16 @@ const GROUPS: Group[] = ["teaching", "real", "graduation"]
 export function LearnScreen() {
   const router = useRouter()
   const { name, setName, faction, setFaction } = usePlayer()
-  const [badges, setBadges] = useState<Record<string, "Won" | "Played">>({})
+  const [badges, setBadges] = useState<Record<string, "Victory" | "Fought">>({})
   const [busy, setBusy] = useState(false)
+  const [alone, setAlone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const next: Record<string, "Won" | "Played"> = {}
+    const next: Record<string, "Victory" | "Fought"> = {}
     for (const recap of loadRecaps()) {
-      if (next[recap.scenarioId] === "Won") continue
-      next[recap.scenarioId] = recap.result === "won" ? "Won" : "Played"
+      if (next[recap.scenarioId] === "Victory") continue
+      next[recap.scenarioId] = recap.result === "won" ? "Victory" : "Fought"
     }
     setBadges(next)
   }, [])
@@ -33,12 +35,12 @@ export function LearnScreen() {
     const response = await fetch("/api/rooms", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ scenarioId, name, faction, playerId: loadPlayerId() }),
+      body: JSON.stringify({ scenarioId, name, faction, playerId: loadPlayerId(), solo: alone }),
     })
     const data = await response.json()
     setBusy(false)
     if (!response.ok) {
-      setError(data.error ?? "Could not start.")
+      setError(data.error ?? "The mission did not launch. Try again.")
       return
     }
     if (typeof data.playerId === "string") savePlayerId(data.playerId)
@@ -46,13 +48,18 @@ export function LearnScreen() {
   }
 
   return (
-    <AppFrame title="Learn" lede="The box campaign. Keep the cards, the dice, and the tape on the table.">
+    <AppFrame title="Learn" lede="The Twycross campaign. Eleven missions from the box, one new rule each.">
       <section className="panel">
         <label>
-          Your name
+          Pilot name
           <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} autoComplete="given-name" />
         </label>
         <FactionPicker faction={faction} setFaction={setFaction} />
+        <button type="button" aria-pressed={alone} onClick={() => setAlone((value) => !value)}>
+          {alone ? "Play alone, the coach takes the other side" : "Two players, one code"}
+        </button>
+        <p className="kit">Inner Sphere pilots hold Twycross for the Lyran Commonwealth. Clan pilots fight for the Jade Falcons.</p>
+        <AccountPanel />
       </section>
       {GROUPS.map((group) => (
         <section className="scenario-group" key={group}>
@@ -64,8 +71,14 @@ export function LearnScreen() {
                 {badges[scenario.id] ? <span className="badge">{badges[scenario.id]}</span> : null}
                 <small>{scenario.chapter}. {scenario.summary}</small>
               </div>
-              <button type="button" disabled={busy || name.trim().length === 0} onClick={() => void start(scenario.id)}>
-                Start
+              <button
+                type="button"
+                className="start"
+                disabled={busy || name.trim().length === 0}
+                title={name.trim().length === 0 ? "Enter a pilot name first" : undefined}
+                onClick={() => void start(scenario.id)}
+              >
+                {alone ? "Play alone" : "Deploy"}
               </button>
             </article>
           ))}

@@ -25,7 +25,7 @@ export function JoinScreen() {
     const data = await response.json()
     setBusy(false)
     if (!response.ok) {
-      setError(data.error ?? "Could not join.")
+      setError(data.error ?? "No answer on that code. Check it with the other pilot.")
       return
     }
     if (typeof data.playerId === "string") savePlayerId(data.playerId)
@@ -35,14 +35,17 @@ export function JoinScreen() {
   }
 
   return (
-    <AppFrame title="Join" lede="Use the same name as the other screen. This device opens that seat.">
+    <AppFrame
+      title="Join"
+      lede="Enter the code from the other pilot's screen. Switching devices mid-battle? Use the same pilot name to get your seat back."
+    >
       <section className="panel">
         <label>
-          Your name
+          Pilot name
           <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} />
         </label>
         <label>
-          Code
+          Battle code
           <input
             value={joinCode}
             onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
@@ -52,7 +55,7 @@ export function JoinScreen() {
           />
         </label>
         <button className="primary" type="button" disabled={busy || name.trim().length === 0 || joinCode.trim().length < 4} onClick={() => void joinGame()}>
-          Join game
+          Take my seat
         </button>
         {error ? <p className="error">{error}</p> : null}
       </section>

@@ -12,6 +12,7 @@ import { DraftPanel } from "./draft-panel"
 import { GameToolbar } from "./game-toolbar"
 import { Mark } from "./mark"
 import { Modal } from "./modal"
+import { TableCheck } from "./table-check"
 import { TableLook } from "./table-look"
 import { TableMap } from "./table-map"
 
@@ -128,26 +129,26 @@ export function CoachScreen({ code }: { code: string }) {
         <header className="brand">
           <Mark />
           <div>
-            <h1>Join {code}</h1>
-            <p>Type the name you used on the other screen. This device shows that seat.</p>
-            <p>Already at the table: {state.players.map((player) => player.name).join(" and ")}.</p>
+            <h1>Battle {code}</h1>
+            <p>Switching devices? Enter the pilot name you used on the other screen to take that seat.</p>
+            <p>Pilots in this battle: {state.players.map((player) => player.name).join(" and ")}.</p>
           </div>
         </header>
         <section className="panel" style={{ marginTop: "1rem" }}>
           <label>
-            Your name
+            Pilot name
             <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} />
           </label>
           <button className="primary" type="button" disabled={busy || name.trim().length === 0} onClick={() => void join()}>
-            Sit down
+            Take my seat
           </button>
           {error ? (
             <div className="error">
               <p>{error}</p>
-              <Link href="/" className="ghost back-link" data-testid="go-back">Go back</Link>
+              <Link href="/" className="ghost back-link" data-testid="go-back">Back to Home</Link>
             </div>
           ) : null}
-          <Link href="/" className="games-link">Games</Link>
+          <Link href="/" className="games-link">Home</Link>
         </section>
       </main>
     )
@@ -231,6 +232,7 @@ export function CoachScreen({ code }: { code: string }) {
             </aside>
           ) : null}
           {screen.map?.where === "stage" ? <TableMap map={screen.map} /> : null}
+          {screen.check ? <TableCheck mech={screen.check.mech} /> : null}
           {screen.draft ? (
             <DraftPanel
               draft={screen.draft}
@@ -292,12 +294,12 @@ export function CoachScreen({ code }: { code: string }) {
           {screen.over ? (
             <div className="end-actions">
               <button type="button" className="primary" onClick={() => saveRecap(recapOf(state, playerId))}>
-                Save to History
+                File the report
               </button>
               <Link href={`/history/${screen.code}`} className="ghost back-link">
-                Open the record
+                Read the after-action report
               </Link>
-              <Link href="/" className="ghost back-link">All games</Link>
+              <Link href="/" className="ghost back-link">Home</Link>
             </div>
           ) : null}
           {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
@@ -307,7 +309,7 @@ export function CoachScreen({ code }: { code: string }) {
           <ScrollPane className={`dock button-pane${screen.active ? " live" : ""}`} testId="dock" more="More buttons below" watch={`${screen.title}:${screen.choices.length}:${screen.pad?.label ?? ""}`}>
             <p className={`cue${screen.active ? " yours" : ""}`} data-testid="cue">
               <i />
-              {busy ? "Sending that tap…" : screen.active ? "Your turn. Tap a button." : screen.wait ? screen.wait : "Watch the table."}
+              {busy ? "Sending…" : screen.active ? "Your move." : screen.wait ? screen.wait : "Stand by. Watch the table."}
             </p>
             {error ? (
               <div className="error">
@@ -337,11 +339,11 @@ export function CoachScreen({ code }: { code: string }) {
       </div>
       <TableLook screen={screen} playerName={playerName} open={lookOpen} onClose={() => setLookOpen(false)} />
       {screen.map ? (
-        <Modal open={mapOpen} title="The table" onClose={() => setMapOpen(false)}>
+        <Modal open={mapOpen} title="Battlefield map" onClose={() => setMapOpen(false)}>
           <TableMap map={screen.map} />
         </Modal>
       ) : null}
-      <Modal open={mechsOpen} title="The mechs" onClose={() => setMechsOpen(false)}>
+      <Modal open={mechsOpen} title="Forces on the field" onClose={() => setMechsOpen(false)}>
         {screen.hud.rows.map((row) => (
           <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
             <span className="who">{row.name}</span>

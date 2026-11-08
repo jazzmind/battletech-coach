@@ -54,10 +54,10 @@ export function HistoryScreen() {
   }
 
   return (
-    <AppFrame title="History" lede="Fights still on the table, and the records saved on this device.">
+    <AppFrame title="History" lede="Battles still in the field, and after-action reports filed on this device.">
       <section className="panel">
-        <h2>On the table</h2>
-        {live.length === 0 ? <p className="lede">No game is waiting.</p> : null}
+        <h2>Still in the field</h2>
+        {live.length === 0 ? <p className="lede">No battle is waiting on you.</p> : null}
         <div className="scenario-group">
           {live.map((game) => (
             <Link key={game.code} href={`/game/${game.code}`} className="scenario">
@@ -68,19 +68,19 @@ export function HistoryScreen() {
         </div>
       </section>
       <section className="panel">
-        <h2>Records</h2>
-        {recaps.length === 0 ? <p className="lede">Finished games are saved here when the fight ends.</p> : null}
+        <h2>After-action reports</h2>
+        {recaps.length === 0 ? <p className="lede">A report is filed here when a battle ends.</p> : null}
         <div className="scenario-group">
           {recaps.map((recap) => (
             <article key={recap.code} className="chapter">
               <div>
                 <strong>{recap.title}</strong>
                 <small>
-                  {recap.winner ? `${recap.winner} wins` : "Nobody lost"} · {recap.code}
+                  {recap.winner ? `Victory: ${recap.winner}` : "No victor"} · {recap.code}
                 </small>
               </div>
               <div className="row-actions">
-                <Link href={`/history/${recap.code}`}>View</Link>
+                <Link href={`/history/${recap.code}`}>Read</Link>
                 <button type="button" className="ghost" onClick={() => setPending(recap)}>
                   Delete
                 </button>
@@ -89,14 +89,14 @@ export function HistoryScreen() {
           ))}
         </div>
       </section>
-      <Modal open={pending != null} title="Delete this record?" onClose={() => setPending(null)}>
+      <Modal open={pending != null} title="Delete this report?" onClose={() => setPending(null)}>
         {pending ? (
           <>
             <p>
-              {pending.title} ({pending.code}) leaves this device. The other player keeps their own copy.
+              The {pending.title} report ({pending.code}) is erased from this device. The other pilot keeps their copy.
             </p>
             <button type="button" className="primary" onClick={() => remove(pending)}>
-              Delete the record
+              Delete the report
             </button>
           </>
         ) : null}

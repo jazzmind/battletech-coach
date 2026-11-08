@@ -44,6 +44,20 @@ export function TableMap({ map }: { map: NonNullable<Screen["map"]> }) {
             </text>
           </g>
         ))}
+        {(map.tokens ?? []).filter((token) => !token.out).map((token) => (
+          <g key={token.id}>
+            <circle cx={token.x} cy={token.y} r={1.3} className={token.mine ? "token mine" : "token"} />
+            <text x={token.x} y={token.y - 2} textAnchor="middle">
+              {token.name}
+            </text>
+          </g>
+        ))}
+        {map.order ? (
+          <g>
+            <line x1={map.tokens?.find((token) => token.name === map.order?.name)?.x ?? map.order.x} y1={map.tokens?.find((token) => token.name === map.order?.name)?.y ?? map.order.y} x2={map.order.x} y2={map.order.y} className="order-line" />
+            <circle cx={map.order.x} cy={map.order.y} r={2.2} className="order" />
+          </g>
+        ) : null}
         <text x={width / 2} y={-2} textAnchor="middle" className="edge">
           {map.host}
         </text>

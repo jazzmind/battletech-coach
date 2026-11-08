@@ -54,20 +54,21 @@ export function GameToolbar({
           <LookIcon />
         </button>
       </nav>
-      <Modal open={menu} title={code} onClose={() => setMenu(false)}>
+      <Modal open={menu} title={`Battle ${code}`} onClose={() => setMenu(false)}>
         <div className="menu-sheet">
           <Link href="/" className="primary back-link" onClick={() => setMenu(false)}>
-            All games
+            Home
           </Link>
           <Link href="/history" className="ghost back-link" onClick={() => setMenu(false)}>
             History
           </Link>
           <button type="button" className="ghost" onClick={() => void copyCode()}>
-            {copied ? "Code copied" : `Copy ${code}`}
+            {copied ? "Code copied" : `Copy battle code ${code}`}
           </button>
           <Link href="/" className="ghost back-link" onClick={() => setMenu(false)}>
-            Leave the table
+            Leave the battle
           </Link>
+          <p className="note">Leaving does not end the battle. Rejoin it from Home or History.</p>
         </div>
       </Modal>
     </>

@@ -54,6 +54,30 @@ function finish(state: GameState, playerId: string, screen: Screen): Screen {
         label: item.label,
         kind: item.kind,
       })),
+      tokens: state.mechs
+        .filter((mech) => mech.x != null && mech.y != null)
+        .map((mech) => ({
+          id: mech.id,
+          name: mech.name,
+          x: mech.x ?? 0,
+          y: mech.y ?? 0,
+          mine: mech.ownerId === playerId,
+          out: mech.knockedOut,
+        })),
+    }
+    const acting = state.mechs.find((mech) => mech.id === state.activeMechId)
+    const order = acting?.order
+    if (
+      screen.map &&
+      acting &&
+      order &&
+      state.solo &&
+      state.phase === "move" &&
+      state.step === "placed" &&
+      acting.ownerId === state.coachId
+    ) {
+      screen.map.where = "stage"
+      screen.map.order = { name: acting.name, x: order.x, y: order.y }
     }
   }
   if (state.phase !== "lobby" && state.phase !== "briefing" && state.phase !== "over" && state.phase !== "draft") {
@@ -283,7 +307,7 @@ function presentPlace(state: GameState, screen: Screen, me: Player): Screen {
     }
   }
   const actor = step ? (step.who === "host" ? state.players[0] : state.players[1]) : undefined
-  if (!actor || actor.id !== me.id) {
+  if (!actor || !handsOn(state, me, actor.id)) {
     screen.wait = actor ? `Watch the table. ${actor.name} is putting this down.` : "Watch the table."
     screen.active = false
     return screen
@@ -317,7 +341,7 @@ function presentCards(state: GameState, screen: Screen, me: Player): Screen {
     jumpInches: `${owner.name}, what are the inches next to the j on the ${current.mech.name} card?`,
   }
   screen.say = prompts[current.field]
-  if (owner.id !== me.id) {
+  if (!handsOn(state, me, owner.id)) {
     screen.wait = `${owner.name} is reading the ${current.mech.name} card.`
     return screen
   }
@@ -388,7 +412,7 @@ function presentMove(state: GameState, screen: Screen, me: Player): Screen {
   const mech = active(state)
   if (!mech) return screen
   const owner = ownerOf(state, mech)
-  const mine = owner.id === me.id
+  const mine = handsOn(state, me, owner.id)
 
   if (state.step === "pass") {
     screen.title = mech.name
@@ -460,8 +484,10 @@ function presentMove(state: GameState, screen: Screen, me: Player): Screen {
   if (state.step === "placed") {
     screen.title = mech.name
     screen.say = placedSay(state, mech, owner)
+    if (state.solo && owner.id === state.coachId) screen.check = { mech: mech.name }
+    const label = state.solo && owner.id === state.coachId ? "It's on that spot" : "It's in its new spot"
     return ownerOnly(screen, mine, owner.name, [
-      { id: "moved", label: "It's in its new spot", action: { type: "continue", playerId: me.id } },
+      { id: "moved", label, action: { type: "continue", playerId: me.id } },
     ])
   }
 
@@ -505,7 +531,7 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     return screen
   }
   const owner = ownerOf(state, mech)
-  const mine = owner.id === me.id
+  const mine = handsOn(state, me, owner.id)
   const combat = state.combat
   const target = combat?.targetId ? state.mechs.find((item) => item.id === combat.targetId) : undefined
 
@@ -686,7 +712,8 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
 
   if (state.step === "miss") {
     screen.title = "Miss"
-    screen.say = `${owner.name}, the ${mech.name} missed the ${target?.name ?? "target"}. Mark nothing.`
+    const rolled = state.solo && owner.id === state.coachId && combat?.dice != null ? `The ${mech.name} rolled ${combat.dice}. ` : ""
+    screen.say = `${rolled}${owner.name}, the ${mech.name} missed the ${target?.name ?? "target"}. Mark nothing.`
     return ownerOnly(screen, mine, owner.name, [
       { id: "miss-next", label: "Next", action: { type: "continue", playerId: me.id } },
     ])
@@ -743,7 +770,8 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     const whose = target && targetOwner ? `${targetOwner.name}'s ${target.name} card` : "the target's card"
     const band = combat?.range ?? "short"
     screen.title = `Mark ${amount}`
-    screen.say = `${owner.name}, the ${mech.name} hit. The ${band} box counts as ${combat?.cardDamage ?? amount}. Mark ${amount} bubble${amount === 1 ? "" : "s"} on ${whose}. That is your opponent's card, not your own. Fill the armor bubbles first, then the red structure bubbles.`
+    const rolled = state.solo && owner.id === state.coachId && combat?.dice != null ? `The ${mech.name} rolled ${combat.dice}. ` : ""
+    screen.say = `${rolled}${owner.name}, the ${mech.name} hit. The ${band} box counts as ${combat?.cardDamage ?? amount}. Mark ${amount} bubble${amount === 1 ? "" : "s"} on ${whose}. That is your opponent's card, not your own. Fill the armor bubbles first, then the red structure bubbles.`
     if (!rules.crits) {
       screen.say += " If the last structure bubble is filled, that mech is knocked out and comes off the table."
     }
@@ -886,6 +914,11 @@ function heatSay(state: GameState): string {
 }
 
 function placedSay(state: GameState, mech: Mech, owner: Player): string {
+  if (state.solo && owner.id === state.coachId && mech.order) {
+    const fromEdge = Math.round(mech.order.y)
+    if (mech.moveMode === "stand") return `Leave the ${mech.name} on its ring. It is standing still.`
+    return `Put the ${mech.name} on the ring. That is ${fromEdge} inches from your edge.`
+  }
   const mode = mech.moveMode ?? "walk"
   const inches = adjustedMove(mech, mode === "charge" ? "walk" : mode === "dfa" ? "jump" : mode)
   const heatNote =
@@ -1054,6 +1087,11 @@ function ownerOf(state: GameState, mech: Mech): Player {
 
 function playerById(state: GameState, playerId: string): Player | undefined {
   return state.players.find((player) => player.id === playerId)
+}
+
+function handsOn(state: GameState, me: Player, ownerId: string): boolean {
+  if (me.id === ownerId) return true
+  return Boolean(state.solo && state.coachId === ownerId && me.id !== state.coachId)
 }
 
 function otherPlayer(state: GameState, playerId: string): Player | undefined {

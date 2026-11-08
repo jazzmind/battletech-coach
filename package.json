@@ -5,16 +5,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
+    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/game/pickup.test.ts lib/game/solo.test.ts lib/see.test.ts lib/ids.test.ts lib/recent.test.ts lib/recaps.test.ts lib/forces/jeffs.test.ts lib/scenario-gen/layout.test.ts"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.18",
     "@upstash/redis": "^1.35.6",
+    "better-auth": "^1.7.18",
     "next": "^16.4.5",
+    "pg": "^8.23.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "tsx": "^4.20.5",

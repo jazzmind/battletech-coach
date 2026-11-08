@@ -33,7 +33,14 @@ body {
 
 button, input { font: inherit; color: inherit; }
 
-button { cursor: pointer; }
+button {
+  cursor: pointer;
+  background: var(--steel);
+  color: var(--paper);
+  border: 3px solid rgba(243, 230, 207, 0.45);
+}
+
+button:disabled { cursor: not-allowed; opacity: 0.55; }
 
 button:focus-visible, input:focus-visible {
   outline: 3px solid var(--amber);
@@ -423,6 +430,10 @@ a.back-link {
 .table-map text { fill: var(--paper); font-size: 2.2px; }
 .table-map .edge { font-size: 2.6px; }
 .table-map .beacon { fill: var(--amber); }
+.table-map .token { fill: #7eb8d4; }
+.table-map .token.mine { fill: var(--amber); }
+.table-map .order { fill: none; stroke: var(--signal); stroke-width: 0.45; }
+.table-map .order-line { stroke: var(--signal); stroke-width: 0.35; }
 .table-map .exit { fill: rgba(239, 77, 22, 0.45); }
 .table-map figcaption { color: var(--muted); font-size: 0.85rem; }
 
@@ -548,6 +559,8 @@ textarea::placeholder {
 
 .app-frame .wrap { padding-bottom: 5.5rem; }
 
+.app-frame.bare .wrap { padding-bottom: 2.5rem; }
+
 .app-nav {
   position: fixed;
   left: 0;
@@ -555,7 +568,7 @@ textarea::placeholder {
   bottom: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--ink);
   border-top: 3px solid var(--amber);
   padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom));
@@ -675,6 +688,24 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
 
 .modal .row { border-top-color: rgba(16, 23, 20, 0.16); }
 
+.modal .row.mine .who { color: #8a5a00; }
+
+.modal-body .ghost,
+.modal-body a.back-link:not(.primary) {
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  background: transparent;
+}
+
+.modal-body a.back-link {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.4rem 0.9rem;
+}
+
+.modal-body .note { color: var(--ink); background: rgba(28, 23, 18, 0.08); }
+
 @media (max-width: 639px) {
   dialog.modal {
     width: 100%;
@@ -700,6 +731,30 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
 }
 
 .chapter small { display: block; color: #d9c7a6; }
+
+.chapter .start {
+  flex: none;
+  min-height: 3rem;
+  padding: 0.4rem 1.1rem;
+  background: var(--signal);
+  color: white;
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 #111;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.05rem;
+}
+
+.intro { display: grid; gap: 0.9rem; margin-bottom: 1rem; }
+
+.intro .say h2 { font-size: clamp(1.4rem, 3vw, 2rem); margin-top: 0.2rem; }
+
+.intro .say p { margin: 0.5rem 0 0; font-size: 1.05rem; line-height: 1.45; }
+
+.intro-steps { margin: 1rem 0 0; }
+
+.intro ol { margin: 0.4rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }
+
+.intro .kit { color: #d9c7a6; margin: 0; }
 
 .badge {
   margin-left: 0.5rem;
@@ -727,6 +782,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
 .log-line.log-clan { border-left-color: #7dba6a; }
 
 .menu-sheet { display: grid; gap: 0.55rem; }
+
+.menu-sheet button { text-align: center; font-weight: 700; }
 
 @keyframes ask {
   0%, 100% { border-top-color: var(--amber); }
@@ -778,6 +835,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
   .table .dock.live { border-left-color: var(--amber); }
   .toolbar { position: static; margin-top: auto; }
   .app-frame { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100dvh; }
+  .app-frame.bare { display: block; }
   .app-nav {
     position: sticky;
     top: 0;

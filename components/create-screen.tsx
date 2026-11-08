@@ -51,7 +51,7 @@ export function CreateScreen() {
     const data = await response.json()
     setBusy(false)
     if (!response.ok) {
-      setError(data.error ?? "Could not start.")
+      setError(data.error ?? "The battle did not launch. Try again.")
       return
     }
     if (typeof data.playerId === "string") savePlayerId(data.playerId)
@@ -59,13 +59,17 @@ export function CreateScreen() {
   }
 
   return (
-    <AppFrame title="Create" lede="Bring a force you built, or type the cards. The coach draws a table from the terrain you own.">
+    <AppFrame
+      title="Create"
+      lede="A pickup battle. Import your force from Jeff's Tools or Terminal, or type in the cards. The coach lays out a battlefield using only the terrain you own."
+    >
       <section className="panel">
         <label>
-          Your name
+          Pilot name
           <input value={name} onChange={(event) => setName(event.target.value)} maxLength={16} />
         </label>
         <FactionPicker faction={faction} setFaction={setFaction} />
+        <p className="group-title">Point budget per side</p>
         <div className="sides" role="group" aria-label="Point budget">
           {[150, 250, 350].map((value) => (
             <button key={value} type="button" aria-pressed={budget === value} onClick={() => setBudget(value)}>
@@ -73,6 +77,7 @@ export function CreateScreen() {
             </button>
           ))}
         </div>
+        <p className="group-title">Table size</p>
         <div className="sides" role="group" aria-label="Table size">
           {(["3x3", "3x4", "4x6"] as TableSize[]).map((value) => (
             <button key={value} type="button" aria-pressed={table === value} onClick={() => setTable(value)}>
@@ -80,6 +85,7 @@ export function CreateScreen() {
             </button>
           ))}
         </div>
+        <p className="group-title">Mission</p>
         <div className="scenario-group">
           {(
             [
@@ -94,6 +100,7 @@ export function CreateScreen() {
             </button>
           ))}
         </div>
+        <p className="group-title">Terrain you own</p>
         <div className="counts">
           {TERRAIN_KEYS.map((kind) => (
             <label key={kind}>
@@ -109,7 +116,7 @@ export function CreateScreen() {
           ))}
         </div>
         <button className="primary" type="button" disabled={busy || name.trim().length === 0} onClick={() => void createPickup()}>
-          Create pickup game
+          Issue the challenge
         </button>
         {error ? <p className="error">{error}</p> : null}
       </section>

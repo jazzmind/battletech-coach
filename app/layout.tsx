@@ -16,7 +16,7 @@ const body = Atkinson_Hyperlegible({
 
 export const metadata: Metadata = {
   title: "Table Coach",
-  description: "A shared turn coach for Alpha Strike at the kitchen table.",
+  description: "A turn coach for BattleTech: Alpha Strike. Two pilots, two screens, one table.",
   robots: { index: false, follow: false },
 }
 

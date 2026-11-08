@@ -1,6 +1,8 @@
 import { boxAt, boxCards, cardOf, defaultFace, type CardFace } from "./cards"
+import { prepareCoach, soloLayout } from "./opponent"
 import { sanitizeCard } from "../forces/jeffs"
 import {
+  adjustedMove,
   attackPreview,
   availableModes,
   boxedDamage,
@@ -25,12 +27,15 @@ import type {
 } from "./types"
 import { RuleError } from "./types"
 
+export const COACH_ID = "coach"
+
 export function createGame(input: {
   code: string
   scenarioId: string
   hostId: string
   hostName: string
   faction: Player["faction"]
+  solo?: boolean
 }): GameState {
   mustScenario(input.scenarioId)
   const host: Player = {
@@ -42,7 +47,7 @@ export function createGame(input: {
   }
   const scenario = mustScenario(input.scenarioId)
   const cards = boxCards()
-  return {
+  const state: GameState = {
     version: 1,
     code: input.code,
     scenarioId: scenario.id,
@@ -63,6 +68,8 @@ export function createGame(input: {
     skipped: {},
     log: [],
   }
+  if (input.solo) seatCoach(state)
+  return state
 }
 
 export function createPickupGame(input: {
@@ -153,10 +160,109 @@ export function applyAction(state: GameState, action: Action): GameState {
   next.past = undefined
   next.notice = undefined
   mutate(next, action)
+  settleSolo(next)
   next.past = snapshot
   next.lastActorId = "playerId" in action ? action.playerId : undefined
   next.version = state.version + 1
   return next
+}
+
+function seatCoach(state: GameState) {
+  const host = state.players[0]
+  const faction = host.faction === "innerSphere" ? "clan" : "innerSphere"
+  const scenario = scenarioOf(state)
+  state.solo = true
+  state.coachId = COACH_ID
+  state.players.push({
+    id: COACH_ID,
+    name: "Coach",
+    faction,
+    ready: true,
+    beaconPoints: 0,
+  })
+  scenario.forces[faction].forEach((variantId, index) => {
+    state.mechs.push(freshMech(state.cards, scenario, `g${index}`, variantId, COACH_ID))
+  })
+  state.phase = "briefing"
+  state.step = "confirm"
+  state.confirmations = [COACH_ID]
+  if (!state.layout) state.layout = soloLayout(state.code, scenario.rules.beacon)
+  deployMinis(state)
+  fillCoachCards(state)
+}
+
+function settleSolo(state: GameState) {
+  if (!state.solo || !state.coachId) return
+  for (let guard = 0; guard < 32; guard += 1) {
+    fillCoachCards(state)
+    deployMinis(state)
+    const coach = state.players.find((player) => player.id === state.coachId)
+    if (coach && state.phase === "roster") coach.ready = true
+    if (state.phase === "roster" && state.players.length === 2 && state.players.every((player) => player.ready)) {
+      state.phase = "gather"
+      state.step = "confirm"
+      state.confirmations = []
+    }
+    seedCoachConfirm(state)
+    const before = soloSignature(state)
+    const next = prepareCoach(state)
+    if (next === "hold" || next === "idle") return
+    mutate(state, next)
+    if (soloSignature(state) === before) return
+  }
+}
+
+function seedCoachConfirm(state: GameState) {
+  const coachId = state.coachId
+  if (!coachId) return
+  const paired =
+    state.phase === "briefing" ||
+    state.phase === "gather" ||
+    (state.phase === "cards" && !currentCard(state)) ||
+    (state.phase === "end" && state.step === "heat")
+  if (paired && !state.confirmations.includes(coachId)) state.confirmations.push(coachId)
+}
+
+function fillCoachCards(state: GameState) {
+  if (!state.coachId) return
+  for (const mech of state.mechs) {
+    if (mech.ownerId !== state.coachId || mech.walkInches != null) continue
+    const card = cardOf(state.cards, mech.variant)
+    mech.walkInches = card.walk
+    mech.armor = card.armor
+    mech.armorLeft = card.armor
+    mech.structure = card.structure
+    mech.structureLeft = card.structure
+  }
+}
+
+function deployMinis(state: GameState) {
+  const layout = state.layout
+  if (!layout) return
+  for (const player of state.players) {
+    const mine = state.mechs.filter((mech) => mech.ownerId === player.id && mech.x == null)
+    const guest = player.id !== state.players[0]?.id
+    const y = guest ? layout.depth - layout.zoneDepth / 2 : layout.zoneDepth / 2
+    mine.forEach((mech, index) => {
+      mech.x = ((index + 1) * layout.width) / (mine.length + 1)
+      mech.y = y
+      mech.facing = guest ? 180 : 0
+    })
+  }
+}
+
+function soloSignature(state: GameState): string {
+  return [
+    state.phase,
+    state.step,
+    state.activeMechId ?? "",
+    state.confirmations.join(","),
+    state.moveOrder.join(","),
+    state.combatIndex,
+    state.turn,
+    Object.entries(state.initiative).join(","),
+    Object.entries(state.beaconAnswers).join(","),
+  ].join("|")
 }
 
 export function rulesOf(state: GameState): Rules {
@@ -303,6 +409,7 @@ function mutate(state: GameState, action: Action) {
 }
 
 function onJoin(state: GameState, action: Extract<Action, { type: "join" }>) {
+  if (state.solo) throw new RuleError("This game is just you and the coach.")
   if (state.phase !== "lobby") throw new RuleError("This game has already started.")
   if (state.players.length >= 2) throw new RuleError("This game already has two players.")
   const host = state.players[0]
@@ -389,7 +496,7 @@ function onConfirm(state: GameState, action: Extract<Action, { type: "confirm" }
   if (state.phase === "place") {
     const step = setupSteps(state)[state.placeIndex]
     const actor = step ? playerBySeat(state, step.who) : undefined
-    if (!actor || actor.id !== action.playerId) {
+    if (!actor || !mayAct(state, action.playerId, actor.id)) {
       throw new RuleError("The other player is putting this on the table.")
     }
     state.placeIndex += 1
@@ -459,7 +566,7 @@ function onCard(state: GameState, action: Extract<Action, { type: "card" }>) {
   if (state.phase !== "cards") throw new RuleError("The cards are already read.")
   const current = currentCard(state)
   if (!current) throw new RuleError("Every card is in.")
-  if (current.mech.ownerId !== action.playerId) {
+  if (!mayAct(state, action.playerId, current.mech.ownerId)) {
     throw new RuleError("The other player reads this card.")
   }
   if (current.field !== action.field) throw new RuleError("That is not the number we need.")
@@ -1056,6 +1163,13 @@ function nextMoveQuestion(state: GameState, from: "placed" | "terrain" | "water"
 
 function commitMove(state: GameState) {
   const mech = activeMech(state)
+  if (state.solo && mech.order) {
+    mech.x = mech.order.x
+    mech.y = mech.order.y
+    mech.order = undefined
+  } else if (state.solo && mech.x != null && mech.y != null && mech.moveMode && mech.moveMode !== "stand") {
+    stepStraight(state, mech)
+  }
   state.moveOrder.push(mech.id)
   state.activeMechId = undefined
   prepareMove(state)
@@ -1632,8 +1746,21 @@ function activeMech(state: GameState): Mech {
 
 function requireOwner(state: GameState, playerId: string): Mech {
   const mech = activeMech(state)
-  if (mech.ownerId !== playerId) throw new RuleError("Watch the table. It is the other player's turn.")
+  if (!mayAct(state, playerId, mech.ownerId)) throw new RuleError("Watch the table. It is the other player's turn.")
   return mech
+}
+
+function mayAct(state: GameState, playerId: string, ownerId: string): boolean {
+  if (playerId === ownerId) return true
+  return Boolean(state.solo && state.coachId === ownerId && playerId !== state.coachId)
+}
+
+function stepStraight(state: GameState, mech: Mech) {
+  const layout = state.layout
+  if (!layout || mech.x == null || mech.y == null || !mech.moveMode) return
+  const budget = adjustedMove(mech, mech.moveMode === "dfa" ? "jump" : mech.moveMode === "charge" ? "walk" : mech.moveMode)
+  const towardFar = mech.ownerId === state.players[0]?.id ? 1 : -1
+  mech.y = Math.min(layout.depth - 1, Math.max(1, mech.y + towardFar * budget))
 }
 
 function playerBySeat(state: GameState, seat: "host" | "guest"): Player | undefined {

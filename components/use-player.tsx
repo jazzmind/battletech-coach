@@ -38,7 +38,7 @@ export function FactionPicker({
   setFaction: (faction: Faction) => void
 }) {
   return (
-    <div className="sides" role="group" aria-label="Your side">
+    <div className="sides" role="group" aria-label="Your faction">
       <button type="button" aria-pressed={faction === "innerSphere"} onClick={() => setFaction("innerSphere")}>
         Inner Sphere
       </button>

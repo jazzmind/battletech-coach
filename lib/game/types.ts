@@ -108,6 +108,10 @@ export type Mech = {
   engineHits: number
   mpHits: number
   moveMode?: MoveMode
+  x?: number
+  y?: number
+  facing?: number
+  order?: { x: number; y: number }
   touchingCover: boolean
   inWater: boolean
   shotThisTurn: boolean
@@ -151,6 +155,8 @@ export type GameState = {
   code: string
   scenarioId: string
   players: Player[]
+  solo?: boolean
+  coachId?: string
   mechs: Mech[]
   phase: Phase
   step: string
@@ -273,7 +279,10 @@ export type Screen = {
     highlight?: number
     pieces: { number: number; x: number; y: number; w: number; h: number; label: string; blocksLos: boolean }[]
     objectives: { x: number; y: number; label: string; kind: "hold" | "exit" }[]
+    tokens?: { id: string; name: string; x: number; y: number; mine: boolean; out: boolean }[]
+    order?: { name: string; x: number; y: number }
   }
+  check?: { mech: string }
   draft?: {
     budget: number
     mine: { id: string; name: string; pv: number; side: string; selected: boolean }[]
