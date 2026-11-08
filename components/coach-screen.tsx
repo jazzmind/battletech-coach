@@ -7,8 +7,10 @@ import { SCENARIOS } from "@/lib/game/scenarios"
 import type { Action, GameState, Screen } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { rememberGame } from "@/lib/recent"
+import { DraftPanel } from "./draft-panel"
 import { Mark } from "./mark"
 import { TableLook } from "./table-look"
+import { TableMap } from "./table-map"
 
 export function CoachScreen({ code }: { code: string }) {
   const [playerId, setPlayerId] = useState<string | null>(null)
@@ -57,7 +59,7 @@ export function CoachScreen({ code }: { code: string }) {
     rememberGame({
       code: state.code,
       scenarioId: state.scenarioId,
-      scenario: scenario?.title ?? state.scenarioId,
+      scenario: state.customScenario?.title ?? scenario?.title ?? state.scenarioId,
       turn: state.phase === "over" ? "Finished" : state.turn > 0 ? `Turn ${state.turn}` : "Setup",
     })
   }, [state])
@@ -168,7 +170,7 @@ export function CoachScreen({ code }: { code: string }) {
           {screen.hud.goal ? <p className="goal" data-testid="goal">{screen.hud.goal}</p> : null}
           <div className="hud-body">
           {screen.hud.rows.map((row) => (
-            <div key={row.name} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
+            <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
               <span className="who">{row.name}</span>
               <span className="detail">{row.detail}</span>
             </div>
@@ -227,7 +229,28 @@ export function CoachScreen({ code }: { code: string }) {
               <p>{screen.tip.text}</p>
             </aside>
           ) : null}
+          {screen.map?.where === "stage" ? <TableMap map={screen.map} /> : null}
+          {screen.draft ? (
+            <DraftPanel
+              draft={screen.draft}
+              busy={busy}
+              onBring={(cards, skipped, replace) => void send({ type: "bring", playerId, cards, skipped, replace })}
+              onField={(variantIds) => void send({ type: "field", playerId, variantIds })}
+            />
+          ) : null}
           {screen.ending ? <p className="ending" data-testid="ending">{screen.ending}</p> : null}
+          {screen.links ? (
+            <p className="ending">
+              Build the next list in{" "}
+              {screen.links.map((link, index) => (
+                <span key={link.href}>
+                  {index > 0 ? (index === screen.links!.length - 1 ? " or " : ", ") : null}
+                  <a href={link.href}>{link.label}</a>
+                </span>
+              ))}
+              .
+            </p>
+          ) : null}
           {screen.note ? <p className="note">{screen.note}</p> : null}
           {screen.gallery && screen.gallery.length > 0 ? (
             <div className="gallery">

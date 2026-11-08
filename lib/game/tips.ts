@@ -1,7 +1,9 @@
 import { mustFace, type CardFace } from "./cards"
 import { enemiesOf } from "./flow"
-import { mustScenario } from "./scenarios"
+import { scenarioOf } from "./scenarios"
 import type { GameState, Mech, Player, Rules } from "./types"
+
+let faceCards: Record<string, CardFace> | undefined
 
 export type Tip = { title: string; text: string }
 
@@ -378,7 +380,7 @@ const RULES: TipRule[] = [
     when: (ctx) => ctx.state.phase === "end" && ctx.state.step === "beacon",
     tip: (ctx) => ({
       title: "The beacon",
-      text: `You score 1 only if your mech is touching the beacon and no enemy mech is. First to ${mustScenario(ctx.state.scenarioId).beaconGoal}.`,
+      text: `You score 1 only if your mech is touching the beacon and no enemy mech is. First to ${scenarioOf(ctx.state).beaconGoal}.`,
     }),
   },
   {
@@ -429,12 +431,13 @@ const RULES: TipRule[] = [
 ]
 
 export function tipFor(state: GameState, playerId: string): Tip | undefined {
+  faceCards = state.cards
   const player = state.players.find((seat) => seat.id === playerId)
   if (!player) return undefined
   const ctx: TipContext = {
     state,
     player,
-    rules: mustScenario(state.scenarioId).rules,
+    rules: scenarioOf(state).rules,
     mine: state.mechs.filter((mech) => mech.ownerId === playerId && !mech.knockedOut),
     acting: state.mechs.find((mech) => mech.id === state.activeMechId),
     mineActing: false,
@@ -469,7 +472,13 @@ function subject(ctx: TipContext): Mech | undefined {
 
 function face(mech: Mech | undefined): CardFace | undefined {
   if (!mech?.variant) return undefined
-  return mustFace(mech.variant)
+  const stored = faceCards?.[mech.variant]
+  if (stored) return stored
+  try {
+    return mustFace(mech.variant)
+  } catch {
+    return undefined
+  }
 }
 
 function box(mech: Mech | undefined, band: "medium" | "long"): CardFace["medium"] | undefined {

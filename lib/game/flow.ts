@@ -1,4 +1,5 @@
-import { boxAt, defaultFace, mustFace } from "./cards"
+import { boxAt, boxCards, cardOf, defaultFace, type CardFace } from "./cards"
+import { sanitizeCard } from "../forces/jeffs"
 import {
   attackPreview,
   availableModes,
@@ -8,7 +9,9 @@ import {
   starDamage,
   weaponBubbles,
 } from "./math"
-import { mustScenario, rosterFor, type Scenario } from "./scenarios"
+import { mustScenario, rosterFor, scenarioOf, type Scenario } from "./scenarios"
+import { makeLayout, pickupScenario } from "../scenario-gen/scenario"
+import type { ObjectiveType, PickupInventory, TableSize } from "../scenario-gen/layout"
 import type {
   Action,
   AttackKind,
@@ -37,12 +40,13 @@ export function createGame(input: {
     beaconPoints: 0,
   }
   const scenario = mustScenario(input.scenarioId)
+  const cards = boxCards()
   return {
     version: 1,
     code: input.code,
     scenarioId: scenario.id,
     players: [host],
-    mechs: scenario.forces[host.faction].map((variantId, index) => freshMech(scenario, `h${index}`, variantId, host.id)),
+    mechs: scenario.forces[host.faction].map((variantId, index) => freshMech(cards, scenario, `h${index}`, variantId, host.id)),
     phase: "lobby",
     step: "wait",
     confirmations: [],
@@ -52,6 +56,61 @@ export function createGame(input: {
     moveOrder: [],
     combatIndex: 0,
     beaconAnswers: {},
+    cards,
+    objectiveIndex: 0,
+    pools: {},
+    skipped: {},
+  }
+}
+
+export function createPickupGame(input: {
+  code: string
+  hostId: string
+  hostName: string
+  faction: Player["faction"]
+  table: TableSize
+  objective: ObjectiveType
+  inventory: PickupInventory
+  seed: string
+  pvBudget: number
+}): GameState {
+  const layout = makeLayout(input)
+  const scenario = pickupScenario(layout, input.objective)
+  const host: Player = {
+    id: input.hostId,
+    name: cleanName(input.hostName),
+    faction: input.faction,
+    ready: false,
+    beaconPoints: 0,
+  }
+  return {
+    version: 1,
+    code: input.code,
+    scenarioId: "pickup",
+    customScenario: scenario,
+    layout,
+    pickup: {
+      table: input.table,
+      objective: input.objective,
+      inventory: input.inventory,
+      seed: input.seed,
+    },
+    pvBudget: input.pvBudget,
+    players: [host],
+    mechs: [],
+    phase: "lobby",
+    step: "wait",
+    confirmations: [],
+    placeIndex: 0,
+    initiative: {},
+    turn: 0,
+    moveOrder: [],
+    combatIndex: 0,
+    beaconAnswers: {},
+    cards: {},
+    objectiveIndex: 0,
+    pools: {},
+    skipped: {},
   }
 }
 
@@ -98,7 +157,7 @@ export function applyAction(state: GameState, action: Action): GameState {
 }
 
 export function rulesOf(state: GameState): Rules {
-  return mustScenario(state.scenarioId).rules
+  return scenarioOf(state).rules
 }
 
 export function cleanName(name: string): string {
@@ -109,21 +168,22 @@ export function cleanName(name: string): string {
   return trimmed
 }
 
-export function setupSteps(state: GameState): { who: "host" | "guest"; say: string }[] {
-  const scenario = mustScenario(state.scenarioId)
+export function setupSteps(state: GameState): { who: "host" | "guest"; say: string; piece?: number }[] {
+  const scenario = scenarioOf(state)
   const steps = scenario.terrain.map((step) => ({
     who: step.who,
+    piece: step.piece,
     say: step.say.replace("{name}", playerBySeat(state, step.who)?.name ?? "Player"),
   }))
   const host = state.players[0]
   const guest = state.players[1]
-  if (host) steps.push({ who: "host", say: facingSay(state, host) })
-  if (guest) steps.push({ who: "guest", say: facingSay(state, guest) })
+  if (host) steps.push({ who: "host", piece: undefined, say: facingSay(state, host) })
+  if (guest) steps.push({ who: "guest", piece: undefined, say: facingSay(state, guest) })
   return steps
 }
 
 export function pieceList(state: GameState): string[] {
-  const scenario = mustScenario(state.scenarioId)
+  const scenario = scenarioOf(state)
   const minis = state.mechs.map((mech) => `the ${mech.name} mini and its card`)
   return [...minis, ...scenario.extraPieces]
 }
@@ -213,6 +273,12 @@ function mutate(state: GameState, action: Action) {
       return onAmmo(state, action)
     case "beacon":
       return onBeacon(state, action)
+    case "bring":
+      return onBring(state, action)
+    case "field":
+      return onField(state, action)
+    case "reroll":
+      return onReroll(state, action)
     default:
       throw new RuleError("That action is not part of this coach.")
   }
@@ -231,9 +297,15 @@ function onJoin(state: GameState, action: Extract<Action, { type: "join" }>) {
     beaconPoints: 0,
   }
   state.players.push(guest)
-  const scenario = mustScenario(state.scenarioId)
+  const scenario = scenarioOf(state)
+  if (scenario.pickup) {
+    state.phase = "draft"
+    state.step = "bring"
+    state.confirmations = []
+    return
+  }
   scenario.forces[faction].forEach((variantId, index) => {
-    state.mechs.push(freshMech(scenario, `g${index}`, variantId, guest.id))
+    state.mechs.push(freshMech(state.cards, scenario, `g${index}`, variantId, guest.id))
   })
   state.phase = "briefing"
   state.step = "confirm"
@@ -241,6 +313,7 @@ function onJoin(state: GameState, action: Extract<Action, { type: "join" }>) {
 }
 
 function onSwap(state: GameState, action: Extract<Action, { type: "swap" }>) {
+  if (scenarioOf(state).pickup) throw new RuleError("This force is already chosen.")
   if (state.phase !== "roster") throw new RuleError("The minis are already on the table.")
   requirePlayer(state, action.playerId)
   const mech = requireMech(state, action.mechId)
@@ -251,16 +324,32 @@ function onSwap(state: GameState, action: Extract<Action, { type: "swap" }>) {
   if (state.mechs.some((other) => other.name === action.name && other.id !== mech.id)) {
     throw new RuleError("That mini is already out.")
   }
-  const fresh = freshMech(mustScenario(state.scenarioId), mech.id, variantForName(state, action.name), mech.ownerId)
+  const fresh = freshMech(state.cards, scenarioOf(state), mech.id, variantForName(state, action.name), mech.ownerId)
   const index = state.mechs.findIndex((other) => other.id === mech.id)
   state.mechs[index] = fresh
   for (const player of state.players) player.ready = false
 }
 
 function onReady(state: GameState, action: Extract<Action, { type: "ready" }>) {
-  if (state.phase !== "roster") throw new RuleError("You are past choosing minis.")
+  if (state.phase !== "roster" && state.phase !== "draft") throw new RuleError("You are past choosing minis.")
   const player = requirePlayer(state, action.playerId)
+  if (state.phase === "draft") {
+    const mine = state.mechs.filter((mech) => mech.ownerId === player.id)
+    if (mine.length === 0) throw new RuleError("Pick at least one mech.")
+    const spent = mine.reduce((sum, mech) => sum + (cardOf(state.cards, mech.variant).pv ?? 0), 0)
+    if (state.pvBudget != null && spent > state.pvBudget) {
+      throw new RuleError(`That force is ${spent} PV. The budget is ${state.pvBudget}.`)
+    }
+  }
   player.ready = true
+  if (state.phase === "draft" && state.players.length === 2 && state.players.every((seat) => seat.ready)) {
+    syncForces(state)
+    state.phase = "briefing"
+    state.step = "confirm"
+    state.confirmations = []
+    for (const seat of state.players) seat.ready = false
+    return
+  }
   if (state.players.length === 2 && state.players.every((seat) => seat.ready)) {
     state.phase = "gather"
     state.step = "confirm"
@@ -312,6 +401,7 @@ function onConfirm(state: GameState, action: Extract<Action, { type: "confirm" }
     }
     if (rulesOf(state).beacon) {
       state.step = "beacon"
+      state.objectiveIndex = 0
       state.beaconAnswers = {}
       return
     }
@@ -356,7 +446,7 @@ function onCard(state: GameState, action: Extract<Action, { type: "card" }>) {
   }
   if (current.field !== action.field) throw new RuleError("That is not the number we need.")
   if (typeof action.value !== "number") throw new RuleError("Type the number on the card.")
-  const card = mustFace(current.mech.variant)
+  const card = cardOf(state.cards, current.mech.variant)
   const expected = cardCount(card, current.field)
   if (action.value !== expected) {
     current.mech.quizMisses = (current.mech.quizMisses ?? 0) + 1
@@ -668,7 +758,7 @@ function onStar(state: GameState, action: Extract<Action, { type: "star" }>) {
   assertRange(action.roll, 1, 6, "Roll one die and tap that face.")
   const combat = state.combat
   if (!combat || !combat.range) throw new RuleError("The attack was lost. Undo and try again.")
-  const card = mustFace(mech.variant)
+  const card = cardOf(state.cards, mech.variant)
   if (boxAt(card, combat.range) !== "star") throw new RuleError("That box is not a star.")
   finishWeaponDamage(state, starDamage(action.roll, mech.weaponHits))
 }
@@ -802,15 +892,47 @@ function onBeacon(state: GameState, action: Extract<Action, { type: "beacon" }>)
   const [first, second] = state.players
   const firstYes = state.beaconAnswers[first.id]
   const secondYes = state.beaconAnswers[second.id]
+  const scenario = scenarioOf(state)
+  const objectives = scenario.objectives ?? []
+  const current = objectives[state.objectiveIndex]
   let headline = "Nobody scores the beacon."
-  if (firstYes && secondYes) {
-    headline = "You both claimed the beacon, so nobody is alone. No point."
+  if (!current) {
+    if (firstYes && secondYes) {
+      headline = "You both claimed the beacon, so nobody is alone. No point."
+    } else if (firstYes) {
+      first.beaconPoints += 1
+      headline = `${first.name} scores 1 beacon point.`
+    } else if (secondYes) {
+      second.beaconPoints += 1
+      headline = `${second.name} scores 1 beacon point.`
+    }
+  } else if (current.kind === "exit") {
+    const scored: string[] = []
+    if (firstYes) {
+      first.beaconPoints += 1
+      scored.push(first.name)
+    }
+    if (secondYes) {
+      second.beaconPoints += 1
+      scored.push(second.name)
+    }
+    headline = scored.length > 0 ? `${scored.join(" and ")} left the far edge and scored.` : "Nobody left the far edge."
+  } else if (firstYes && secondYes) {
+    headline = `You both claimed ${current.label}, so nobody is alone. No point.`
   } else if (firstYes) {
     first.beaconPoints += 1
-    headline = `${first.name} scores 1 beacon point.`
+    headline = `${first.name} scores 1 on ${current.label}.`
   } else if (secondYes) {
     second.beaconPoints += 1
-    headline = `${second.name} scores 1 beacon point.`
+    headline = `${second.name} scores 1 on ${current.label}.`
+  } else {
+    headline = `Nobody scores ${current.label}.`
+  }
+  if (current && state.objectiveIndex + 1 < objectives.length) {
+    state.objectiveIndex += 1
+    state.beaconAnswers = {}
+    state.notice = headline
+    return
   }
   if (checkWin(state)) return
   startInitiative(state)
@@ -1144,7 +1266,7 @@ function findWinner(state: GameState): { id: string; reason: string } | null {
       return { id: other.id, reason: "Every enemy mech is knocked out." }
     }
   }
-  const scenario = mustScenario(state.scenarioId)
+  const scenario = scenarioOf(state)
   if (scenario.rules.beacon) {
     for (const player of state.players) {
       if (player.beaconPoints >= scenario.beaconGoal) {
@@ -1220,11 +1342,17 @@ function writeCard(mech: Mech, field: CardField, value: number | boolean) {
   }
 }
 
-function freshMech(scenario: Scenario, id: string, variantId: string, ownerId: string): Mech {
-  const card = mustFace(variantId)
+function freshMech(
+  cards: Record<string, CardFace>,
+  scenario: Scenario,
+  id: string,
+  variantId: string,
+  ownerId: string,
+): Mech {
+  const card = cardOf(cards, variantId)
   const mech = blankMech(id, card.name, ownerId)
   mech.variant = card.id
-  mech.skill = scenario.skill
+  mech.skill = card.skill ?? scenario.skill
   mech.tmm = card.tmm
   mech.ov = card.ov
   mech.size = card.size
@@ -1241,20 +1369,20 @@ function freshMech(scenario: Scenario, id: string, variantId: string, ownerId: s
 }
 
 function variantForName(state: GameState, name: string): string {
-  const scenario = mustScenario(state.scenarioId)
+  const scenario = scenarioOf(state)
   const listed = [...scenario.forces.innerSphere, ...scenario.forces.clan]
-  const match = listed.find((id) => mustFace(id).name === name)
+  const match = listed.find((id) => cardOf(state.cards, id).name === name)
   return match ?? defaultFace(name).id
 }
 
-function cardCount(card: ReturnType<typeof mustFace>, field: CardField): number {
+function cardCount(card: ReturnType<typeof cardOf>, field: CardField): number {
   if (field === "walk") return card.walk
   if (field === "armor") return card.armor
   if (field === "structure") return card.structure
   throw new RuleError("That number is already on the card.")
 }
 
-function missSay(mech: Mech, card: ReturnType<typeof mustFace>, field: CardField, expected: number): string {
+function missSay(mech: Mech, card: ReturnType<typeof cardOf>, field: CardField, expected: number): string {
   const where =
     field === "walk"
       ? "Ground move is the number on the move line. Skip the j."
@@ -1270,7 +1398,7 @@ function applyPrintedDamage(state: GameState) {
   const combat = state.combat
   if (!combat?.range || !combat.attackerId) throw new RuleError("The attack was lost. Undo and try again.")
   const mech = requireMech(state, combat.attackerId)
-  const box = boxAt(mustFace(mech.variant), combat.range)
+  const box = boxAt(cardOf(state.cards, mech.variant), combat.range)
   if (box === "star") {
     state.step = "star"
     return
@@ -1293,7 +1421,7 @@ function finishWeaponDamage(state: GameState, cardDamage: number) {
 function facingSay(state: GameState, player: Player): string {
   const sides = state.mechs
     .filter((mech) => mech.ownerId === player.id)
-    .map((mech) => `Use the side labeled ${mustFace(mech.variant).side} on the ${mech.name}. Leave the other side face down.`)
+    .map((mech) => `Use the side labeled ${cardOf(state.cards, mech.variant).side} on the ${mech.name}. Leave the other side face down.`)
     .join(" ")
   return `${player.name}, put ${namesOf(state, player.id)} on your home edge, facing the other side. ${sides}`.trim()
 }
@@ -1330,6 +1458,81 @@ function mutualRetreat(state: GameState, reason: string) {
   state.winnerId = undefined
   state.activeMechId = undefined
   state.winReason = reason
+}
+
+function onBring(state: GameState, action: Extract<Action, { type: "bring" }>) {
+  if (state.phase !== "draft" && state.phase !== "lobby") throw new RuleError("The forces are already set.")
+  if (!scenarioOf(state).pickup) throw new RuleError("This game uses the box minis.")
+  const player = requirePlayer(state, action.playerId)
+  if (action.cards.length > 24) throw new RuleError("Bring 24 mechs or fewer.")
+  const ids = action.replace ? [] : [...(state.pools[action.playerId] ?? [])]
+  action.cards.forEach((raw, index) => {
+    const card = sanitizeCard(raw, `${action.playerId}-${index + 1}`)
+    const prefix = `${action.playerId.slice(0, 8)}:`
+    const id = card.id.startsWith(prefix) ? card.id : `${prefix}${card.id}`
+    state.cards[id] = { ...card, id }
+    if (!ids.includes(id)) ids.push(id)
+  })
+  if (ids.length > 24) throw new RuleError("Bring 24 mechs or fewer.")
+  if (action.replace) {
+    for (const old of state.pools[action.playerId] ?? []) {
+      if (!ids.includes(old)) delete state.cards[old]
+    }
+    state.skipped[action.playerId] = action.skipped.slice(0, 40)
+  }
+  state.pools[action.playerId] = ids
+  state.mechs = state.mechs.filter((mech) => mech.ownerId !== action.playerId || ids.includes(mech.variant))
+  player.ready = false
+}
+
+function onField(state: GameState, action: Extract<Action, { type: "field" }>) {
+  if (state.phase !== "draft" && state.phase !== "lobby") throw new RuleError("Pick the force before the briefing.")
+  const player = requirePlayer(state, action.playerId)
+  const pool = new Set(state.pools[action.playerId] ?? [])
+  const unique = [...new Set(action.variantIds)]
+  if (unique.some((id) => !pool.has(id))) throw new RuleError("That mech is not in the force you brought.")
+  const spent = unique.reduce((sum, id) => sum + (cardOf(state.cards, id).pv ?? 0), 0)
+  if (state.pvBudget != null && spent > state.pvBudget) {
+    throw new RuleError(`That force is ${spent} PV. The budget is ${state.pvBudget}.`)
+  }
+  const scenario = scenarioOf(state)
+  state.mechs = state.mechs.filter((mech) => mech.ownerId !== action.playerId)
+  unique.forEach((id, index) => {
+    state.mechs.push(freshMech(state.cards, scenario, `${player.id.slice(0, 4)}${index}`, id, player.id))
+  })
+  player.ready = false
+  syncForces(state)
+}
+
+function onReroll(state: GameState, action: Extract<Action, { type: "reroll" }>) {
+  if (state.phase !== "lobby" && state.phase !== "draft" && state.phase !== "briefing") {
+    throw new RuleError("The terrain is already on the table.")
+  }
+  requirePlayer(state, action.playerId)
+  const setup = state.pickup
+  if (!setup || !state.customScenario) throw new RuleError("This table is fixed.")
+  const seed = `${setup.seed}-${state.version}`
+  const layout = makeLayout({ ...setup, seed })
+  const scenario = pickupScenario(layout, setup.objective)
+  scenario.forces = state.customScenario.forces
+  state.layout = layout
+  state.customScenario = scenario
+  state.pickup = { ...setup, seed }
+  state.placeIndex = 0
+  state.objectiveIndex = 0
+  state.confirmations = []
+}
+
+function syncForces(state: GameState) {
+  const scenario = state.customScenario
+  if (!scenario) return
+  const forces: Scenario["forces"] = { innerSphere: [], clan: [] }
+  for (const mech of state.mechs) {
+    const owner = state.players.find((player) => player.id === mech.ownerId)
+    if (!owner) continue
+    forces[owner.faction].push(mech.variant)
+  }
+  scenario.forces = forces
 }
 
 function blankMech(id: string, name: string, ownerId: string): Mech {

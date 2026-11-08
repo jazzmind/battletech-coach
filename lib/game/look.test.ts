@@ -17,8 +17,8 @@ function screen(): Screen {
       turn: "Turn 1",
       goal: "Two turns, then both pull back. Nobody loses.",
       rows: [
-        { name: "Warhammer", detail: "On the table", mine: true, out: false },
-        { name: "Timber Wolf", detail: "On the table", mine: false, out: false },
+        { id: "wh", name: "Warhammer", detail: "On the table", mine: true, out: false },
+        { id: "tw", name: "Timber Wolf", detail: "On the table", mine: false, out: false },
       ],
     },
   }

@@ -401,6 +401,23 @@ a.back-link {
 }
 
 .pad button { text-align: center; justify-content: center; }
+.counts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.75rem 0; }
+.counts input { width: 4.5rem; }
+.draft, .wizard { display: grid; gap: 0.6rem; margin-top: 0.8rem; }
+.draft textarea, .wizard input, .counts input, .file input { background: var(--steel); border: 1px solid var(--line); padding: 0.4rem; }
+.table-map { margin: 0.8rem 0; }
+.table-map svg { width: 100%; height: auto; background: #101816; }
+.table-map .mat { fill: #1b2a24; }
+.table-map .zone { fill: rgba(226, 161, 26, 0.16); }
+.table-map .grid { stroke: rgba(243, 230, 207, 0.18); stroke-width: 0.15; }
+.table-map .piece { fill: #3d4f46; stroke: #d9c7a6; stroke-width: 0.25; }
+.table-map .piece.solid { fill: #24312c; }
+.table-map .piece.hot { stroke: var(--signal); stroke-width: 0.6; }
+.table-map text { fill: var(--paper); font-size: 2.2px; }
+.table-map .edge { font-size: 2.6px; }
+.table-map .beacon { fill: var(--amber); }
+.table-map .exit { fill: rgba(239, 77, 22, 0.45); }
+.table-map figcaption { color: var(--muted); font-size: 0.85rem; }
 
 .ghost {
   background: transparent;

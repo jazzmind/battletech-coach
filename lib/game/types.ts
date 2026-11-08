@@ -1,3 +1,7 @@
+import type { CardFace } from "./cards"
+import type { Scenario } from "./scenarios"
+import type { Layout, ObjectiveType, PickupInventory, TableSize } from "../scenario-gen/layout"
+
 export type Faction = "innerSphere" | "clan"
 
 export type MoveMode = "stand" | "walk" | "jump" | "sprint" | "charge" | "dfa"
@@ -15,6 +19,7 @@ export type CritEffect =
 
 export type Phase =
   | "lobby"
+  | "draft"
   | "briefing"
   | "roster"
   | "gather"
@@ -158,6 +163,19 @@ export type GameState = {
   combatIndex: number
   combat?: CombatState
   beaconAnswers: Record<string, boolean>
+  cards: Record<string, CardFace>
+  customScenario?: Scenario
+  layout?: Layout
+  objectiveIndex: number
+  pvBudget?: number
+  pickup?: {
+    table: TableSize
+    objective: ObjectiveType
+    inventory: PickupInventory
+    seed: string
+  }
+  pools: Record<string, string[]>
+  skipped: Record<string, string[]>
   notice?: string
   winnerId?: string
   winReason?: string
@@ -195,6 +213,9 @@ export type Action =
   | { type: "crit"; playerId: string; effect: CritEffect }
   | { type: "ammo"; playerId: string; result: "destroyed" | "case" | "safe" }
   | { type: "beacon"; playerId: string; alone: boolean }
+  | { type: "bring"; playerId: string; cards: CardFace[]; skipped: string[]; replace: boolean }
+  | { type: "field"; playerId: string; variantIds: string[] }
+  | { type: "reroll"; playerId: string }
 
 export type Choice = {
   id: string
@@ -239,11 +260,31 @@ export type Screen = {
     options: { name: string; action: Action }[]
   }[]
   gallery?: { name: string; painter: string; page: string }[]
+  map?: {
+    where: "stage" | "look"
+    width: number
+    depth: number
+    zoneDepth: number
+    host: string
+    guest: string
+    highlight?: number
+    pieces: { number: number; x: number; y: number; w: number; h: number; label: string; blocksLos: boolean }[]
+    objectives: { x: number; y: number; label: string; kind: "hold" | "exit" }[]
+  }
+  draft?: {
+    budget: number
+    mine: { id: string; name: string; pv: number; side: string; selected: boolean }[]
+    skipped: string[]
+    spent: number
+    ready: boolean
+    waiting?: string
+  }
+  links?: { label: string; href: string }[]
   hud: {
     scenario: string
     turn: string
     goal: string
-    rows: { name: string; detail: string; mine: boolean; out: boolean }[]
+    rows: { id: string; name: string; detail: string; mine: boolean; out: boolean }[]
   }
   over?: { winner: string; reason: string }
   undo?: Action

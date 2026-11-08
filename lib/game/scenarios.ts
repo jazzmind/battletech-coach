@@ -51,7 +51,7 @@ export function rules(partial: Partial<Rules>): Rules {
   return { ...base, ...partial }
 }
 
-export type TerrainStep = { who: "host" | "guest"; say: string }
+export type TerrainStep = { who: "host" | "guest"; say: string; piece?: number }
 
 export type SideBrief = {
   unit: string
@@ -77,6 +77,8 @@ export type Scenario = {
   extraPieces: string[]
   terrain: TerrainStep[]
   beaconGoal: number
+  pickup?: boolean
+  objectives?: { id: string; label: string; kind: "hold" | "exit" }[]
 }
 
 const LYRAN = "Twycross Garrison, Lyran Commonwealth"
@@ -681,6 +683,10 @@ export function mustScenario(id: string): Scenario {
   const scenario = byId.get(id)
   if (!scenario) throw new Error(`Unknown scenario ${id}`)
   return scenario
+}
+
+export function scenarioOf(state: { scenarioId: string; customScenario?: Scenario }): Scenario {
+  return state.customScenario ?? mustScenario(state.scenarioId)
 }
 
 export const GROUP_LABEL: Record<Group, string> = {

@@ -19,6 +19,10 @@ export type CardFace = {
   medium: DamageBox
   long: DamageBox
   specials: string[]
+  pv?: number
+  skill?: number
+  unitType?: string
+  threshold?: number
 }
 
 export type MiniPhoto = {
@@ -589,4 +593,18 @@ export function boxAt(card: CardFace, range: RangeBand): DamageBox {
   if (range === "short") return card.short
   if (range === "medium") return card.medium
   return card.long
+}
+
+export function boxCards(): Record<string, CardFace> {
+  const cards: Record<string, CardFace> = {}
+  for (const mini of MINIS) {
+    for (const card of mini.faces) cards[card.id] = card
+  }
+  return cards
+}
+
+export function cardOf(cards: Record<string, CardFace> | undefined, variant: string): CardFace {
+  const stored = cards?.[variant]
+  if (stored) return stored
+  return mustFace(variant)
 }

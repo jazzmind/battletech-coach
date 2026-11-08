@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { lookPrompt } from "@/lib/game/look"
 import type { Screen } from "@/lib/game/types"
+import { TableMap } from "./table-map"
 
 const KEY = "mech-coach-xai-key"
 
@@ -134,6 +135,7 @@ export function TableLook({
       </button>
       {open ? (
     <section className="look" data-testid="look">
+      {screen.map?.where === "look" ? <TableMap map={screen.map} /> : null}
       <p className="kicker">A look, not a referee</p>
       <p>The cards, the dice, and the tape still decide.</p>
       {storedKey ? (
