@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/ids.test.ts lib/recent.test.ts"
+    "test": "tsx --test lib/game/reducer.test.ts lib/game/look.test.ts lib/game/coach-copy.test.ts lib/game/tips.test.ts lib/ids.test.ts lib/recent.test.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.35.6",

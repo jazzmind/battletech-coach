@@ -1,5 +1,7 @@
+import { mustFace, miniByName } from "./cards"
 import { adjustedMove } from "./math"
-import { factionLabel, mustScenario, rosterFor } from "./scenarios"
+import { factionLabel, mustScenario, rosterFor, speak } from "./scenarios"
+import { tipFor } from "./tips"
 import {
   currentCard,
   enemiesOf,
@@ -20,6 +22,25 @@ const MODE_LABEL: Record<MoveMode, { label: string; hint: string }> = {
 }
 
 export function present(state: GameState, playerId: string): Screen {
+  return finish(state, playerId, compose(state, playerId))
+}
+
+function finish(state: GameState, playerId: string, screen: Screen): Screen {
+  const scenario = mustScenario(state.scenarioId)
+  screen.hud.goal = goalLine(state)
+  if (state.phase !== "lobby" && state.phase !== "briefing" && state.phase !== "over") {
+    const tip = tipFor(state, playerId)
+    if (tip) screen.tip = tip
+  }
+  if (state.phase === "over") {
+    const winner = state.players.find((player) => player.id === state.winnerId)
+    const names = seatNames(state)
+    screen.ending = speak(scenario.ending[winner?.faction ?? "draw"], names.innerSphere, names.clan)
+  }
+  return screen
+}
+
+function compose(state: GameState, playerId: string): Screen {
   const scenario = mustScenario(state.scenarioId)
   const screen = blank(state, playerId)
   const me = state.players.find((player) => player.id === playerId)
@@ -49,6 +70,7 @@ export function present(state: GameState, playerId: string): Screen {
     return screen
   }
 
+  if (state.phase === "briefing") return presentBriefing(state, screen, me)
   if (state.phase === "roster") return presentRoster(state, screen, me)
   if (state.phase === "gather") return presentGather(state, screen, me)
   if (state.phase === "place") return presentPlace(state, screen, me)
@@ -60,19 +82,40 @@ export function present(state: GameState, playerId: string): Screen {
   return screen
 }
 
+function presentBriefing(state: GameState, screen: Screen, me: Player): Screen {
+  const scenario = mustScenario(state.scenarioId)
+  const names = seatNames(state)
+  const fill = (text: string) => speak(text, names.innerSphere, names.clan)
+  const side = scenario.sides[me.faction]
+  screen.kicker = scenario.chapter
+  screen.title = scenario.title
+  screen.say = fill(scenario.story)
+  screen.lesson = scenario.lesson
+  screen.lessonKicker = "New rule today"
+  screen.mission = {
+    chapter: scenario.chapter,
+    story: fill(scenario.story),
+    goal: scenario.goal,
+    unit: side.unit,
+    orders: fill(side.orders),
+    plan: side.plan.map(fill),
+  }
+  return bothConfirm(state, screen, me, "briefing-ok", "I know the plan")
+}
+
 function presentRoster(state: GameState, screen: Screen, me: Player): Screen {
   const scenario = mustScenario(state.scenarioId)
   const seats = state.players.map((player) => {
-    const names = state.mechs.filter((mech) => mech.ownerId === player.id).map((mech) => mech.name)
-    return `${player.name} uses ${joinList(names.map((name) => `the ${name}`))}`
+    const names = state.mechs
+      .filter((mech) => mech.ownerId === player.id)
+      .map((mech) => `the ${mech.name}, side ${mustFace(mech.variant).side}`)
+    return `${player.name} uses ${joinList(names)}`
   })
   screen.kicker = "Choose minis"
   screen.title = "These mechs only"
-  const sides = scenario.rules.retreat
-    ? " Flip the Warhammer to the side labeled 8R. Flip the Timber Wolf to the side labeled Prime. Leave the other side face down."
-    : ""
-  screen.say = `${seats.join(". ")}. Take those minis and their cards out of the box. Leave every other mech in the box.${sides} Open the list only if you want to swap one.`
+  screen.say = `${seats.join(". ")}. Take those minis and their cards out of the box. Leave every other mech in the box. The skill box is blank. Write ${scenario.skill} in it for this game. Open the list only if you want to swap one.`
   screen.lesson = scenario.lesson
+  screen.lessonKicker = "New rule today"
   screen.active = true
   screen.roster = state.mechs.map((mech) => {
     const owner = ownerOf(state, mech)
@@ -112,6 +155,12 @@ function presentGather(state: GameState, screen: Screen, me: Player): Screen {
   screen.title = "Take these out"
   screen.say = `${names}. ${scenario.table} Take out only ${joinList(mechs)}, with their cards. Also take ${joinList(scenario.extraPieces)}. Leave every other mech in the box.`
   screen.lesson = scenario.lesson
+  screen.lessonKicker = "New rule today"
+  const gallery = state.mechs.flatMap((mech) => {
+    const photo = miniByName(mech.name)?.photo
+    return photo ? [{ name: mech.name, painter: photo.painter, page: photo.page }] : []
+  })
+  if (gallery.length > 0) screen.gallery = gallery
   return bothConfirm(state, screen, me, "gather-ok", "They're out")
 }
 
@@ -120,24 +169,34 @@ function presentPlace(state: GameState, screen: Screen, me: Player): Screen {
   const step = steps[state.placeIndex]
   screen.kicker = `Setup ${state.placeIndex + 1} of ${steps.length}`
   screen.title = "Put this on the table"
-  screen.say = step ? `${step.say} Both of you tap when you see it.` : "The table is ready."
-  return bothConfirm(state, screen, me, "placed", "It's on the table")
+  screen.say = step ? step.say : "The table is ready."
+  const actor = step ? (step.who === "host" ? state.players[0] : state.players[1]) : undefined
+  if (!actor || actor.id !== me.id) {
+    screen.wait = actor ? `Watch the table. ${actor.name} is putting this down.` : "Watch the table."
+    screen.active = false
+    return screen
+  }
+  screen.active = true
+  screen.choices = [{ id: "placed", label: "It's on the table", action: { type: "confirm", playerId: me.id } }]
+  return screen
 }
 
 function presentCards(state: GameState, screen: Screen, me: Player): Screen {
+  const scenario = mustScenario(state.scenarioId)
   const current = currentCard(state)
   screen.kicker = "Read the card"
   if (!current) {
-    screen.title = "Cards are in"
-    screen.say = "Every number we need is in."
-    return screen
+    screen.title = "Write the skill"
+    screen.say = `The skill box on each card is blank. Write ${scenario.skill} in that box for this game. A regular pilot is ${scenario.skill}. When you shoot, roll two dice and add only the dice.`
+    return bothConfirm(state, screen, me, "skill-written", "Skill is written")
   }
   const owner = ownerOf(state, current.mech)
+  const side = mustFace(current.mech.variant).side
   screen.title = current.mech.name
   const prompts: Record<string, string> = {
-    walk: `${owner.name}, what is the ground move in inches on the ${current.mech.name} card? Not the jump number. That is how far it can walk.`,
-    armor: `${owner.name}, count the armor bubbles on the ${current.mech.name} card. Those are the open circles, not the red ones. The skill spot is blank, so this pilot is regular and the dice need 4.`,
-    structure: `${owner.name}, count the red structure bubbles on the ${current.mech.name} card.`,
+    walk: `${owner.name}, the ${current.mech.name} card should show the side labeled ${side}. What is the ground move in inches? Not the jump number. The skill box is blank. Write ${scenario.skill} there.`,
+    armor: `${owner.name}, count the armor bubbles on the ${side} side of the ${current.mech.name}. Those are the open circles, not the red ones.`,
+    structure: `${owner.name}, count the red structure bubbles on the ${side} side of the ${current.mech.name}.`,
     skill: `${owner.name}, what skill number is written on the ${current.mech.name} card? A regular pilot is 4. When it shoots, you roll two dice and add them. This skill is where that target starts. You do not add the skill to the dice.`,
     tmm: `${owner.name}, what is the TMM on the ${current.mech.name} card? That is the number that makes it harder to hit when it moves.`,
     ov: `${owner.name}, how many overheat boxes are on the ${current.mech.name} card before the S? Tap 0 if there is no OV.`,
@@ -177,6 +236,7 @@ function presentInitiative(state: GameState, screen: Screen, me: Player): Screen
   screen.kicker = state.turn === 1 ? "First turn" : `Turn ${state.turn}`
   screen.title = "Roll initiative"
   screen.lesson = mustScenario(state.scenarioId).lesson
+  screen.lessonKicker = "New rule today"
   screen.say = "Each of you roll two dice and add them. Type that total. Do not add anything else. The lower roll moves first. A tie means roll again."
   if (state.initiative[me.id] == null) {
     screen.active = true
@@ -526,6 +586,18 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     return yesNo(screen, mine, owner.name, me.id, "rear")
   }
 
+  if (state.step === "star") {
+    screen.title = "Minimum damage"
+    screen.say = `${owner.name}, that box is 0 with a star. Roll one die. 4, 5, or 6 counts as 1 bubble. 1, 2, or 3 counts as 0. Tap the face you rolled.`
+    if (!mine) {
+      screen.wait = `${owner.name} is rolling one die.`
+      return screen
+    }
+    screen.active = true
+    screen.pad = { kind: "star", min: 1, max: 6, label: "One die" }
+    return screen
+  }
+
   if (state.step === "band") {
     const band = combat?.range ?? "short"
     screen.title = `${band[0].toUpperCase()}${band.slice(1)} damage`
@@ -547,7 +619,7 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
       .filter((part) => part.length > 0)
       .join(" and ")
     screen.title = marked.length > 0 ? `Mark ${marked}` : "No bubbles"
-    screen.say = `${owner.name}, the coach counted ${marked || "no bubbles"} on ${targetOwner.name}'s ${target.name} card. Mark those same bubbles on the card. ${target.name} has ${target.armorLeft ?? 0} armor and ${target.structureLeft ?? 0} structure left.`
+    screen.say = `${owner.name}, the ${combat?.range ?? "short"} box counts as ${combat?.cardDamage ?? 0}. The coach counted ${marked || "no bubbles"} on ${targetOwner.name}'s ${target.name} card. Mark those same bubbles on the card. ${target.name} has ${target.armorLeft ?? 0} armor and ${target.structureLeft ?? 0} structure left.`
     return ownerOnly(screen, mine, owner.name, [
       { id: "armor", label: "The card matches", action: { type: "marked", playerId: me.id, result: "armor" } },
     ])
@@ -557,8 +629,9 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     const amount = combat?.totalDamage ?? 0
     const targetOwner = target ? ownerOf(state, target) : undefined
     const whose = target && targetOwner ? `${targetOwner.name}'s ${target.name} card` : "the target's card"
+    const band = combat?.range ?? "short"
     screen.title = `Mark ${amount}`
-    screen.say = `${owner.name}, the ${mech.name} hit. Mark ${amount} bubble${amount === 1 ? "" : "s"} on ${whose}. That is your opponent's card, not your own. Fill the armor bubbles first, then the red structure bubbles.`
+    screen.say = `${owner.name}, the ${mech.name} hit. The ${band} box counts as ${combat?.cardDamage ?? amount}. Mark ${amount} bubble${amount === 1 ? "" : "s"} on ${whose}. That is your opponent's card, not your own. Fill the armor bubbles first, then the red structure bubbles.`
     if (!rules.crits) {
       screen.say += " If the last structure bubble is filled, that mech is knocked out and comes off the table."
     }
@@ -819,6 +892,7 @@ function blank(state: GameState, playerId: string): Screen {
     hud: {
       scenario: scenario.title,
       turn: state.turn > 0 ? `Turn ${state.turn}` : "Setup",
+      goal: "",
       rows: state.mechs.map((mech) => ({
         name: mech.name,
         detail: hudDetail(mech),
@@ -865,4 +939,21 @@ function playerById(state: GameState, playerId: string): Player | undefined {
 
 function otherPlayer(state: GameState, playerId: string): Player | undefined {
   return state.players.find((player) => player.id !== playerId)
+}
+
+function seatNames(state: GameState): { innerSphere: string; clan: string } {
+  return {
+    innerSphere: state.players.find((player) => player.faction === "innerSphere")?.name ?? "the Lyrans",
+    clan: state.players.find((player) => player.faction === "clan")?.name ?? "the Falcons",
+  }
+}
+
+function goalLine(state: GameState): string {
+  const scenario = mustScenario(state.scenarioId)
+  if (scenario.rules.retreat) return "Two turns, then both pull back. Nobody loses."
+  if (scenario.rules.beacon) {
+    const scores = state.players.map((player) => `${player.name} ${player.beaconPoints}`).join(" · ")
+    return `First to ${scenario.beaconGoal} on the beacon. ${scores}`.trim()
+  }
+  return "Knock out every enemy mech."
 }

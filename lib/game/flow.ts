@@ -1,11 +1,14 @@
+import { boxAt, defaultFace, mustFace } from "./cards"
 import {
   attackPreview,
   availableModes,
+  boxedDamage,
   chargeSelfDamage,
   chargeTargetDamage,
+  starDamage,
   weaponBubbles,
 } from "./math"
-import { mustScenario, rosterFor } from "./scenarios"
+import { mustScenario, rosterFor, type Scenario } from "./scenarios"
 import type {
   Action,
   AttackKind,
@@ -39,7 +42,7 @@ export function createGame(input: {
     code: input.code,
     scenarioId: scenario.id,
     players: [host],
-    mechs: scenario.forces[host.faction].map((name, index) => freshMech(scenario.rules, `h${index}`, name, host.id)),
+    mechs: scenario.forces[host.faction].map((variantId, index) => freshMech(scenario, `h${index}`, variantId, host.id)),
     phase: "lobby",
     step: "wait",
     confirmations: [],
@@ -125,16 +128,10 @@ export function pieceList(state: GameState): string[] {
   return [...minis, ...scenario.extraPieces]
 }
 
-export function nextCardField(mech: Mech, rules: Rules): CardField | null {
+export function nextCardField(mech: Mech, _rules: Rules): CardField | null {
   if (mech.walkInches == null) return "walk"
-  if (rules.retreat && mech.armor == null) return "armor"
-  if (rules.retreat && mech.structure == null) return "structure"
-  if (mech.skill == null) return "skill"
-  if ((rules.tmm || rules.charge) && mech.tmm == null) return "tmm"
-  if (rules.heatScale && mech.ov == null) return "ov"
-  if ((rules.physical || rules.charge) && mech.size == null) return "size"
-  if ((rules.teachingJump || rules.realJump) && mech.hasJump == null) return "jump"
-  if (mech.hasJump && mech.jumpInches == null) return "jumpInches"
+  if (mech.armor == null) return "armor"
+  if (mech.structure == null) return "structure"
   return null
 }
 
@@ -206,6 +203,8 @@ function mutate(state: GameState, action: Action) {
       return onDice(state, action)
     case "band":
       return onBand(state, action)
+    case "star":
+      return onStar(state, action)
     case "marked":
       return onMarked(state, action)
     case "crit":
@@ -233,11 +232,12 @@ function onJoin(state: GameState, action: Extract<Action, { type: "join" }>) {
   }
   state.players.push(guest)
   const scenario = mustScenario(state.scenarioId)
-  scenario.forces[faction].forEach((name, index) => {
-    state.mechs.push(freshMech(scenario.rules, `g${index}`, name, guest.id))
+  scenario.forces[faction].forEach((variantId, index) => {
+    state.mechs.push(freshMech(scenario, `g${index}`, variantId, guest.id))
   })
-  state.phase = "roster"
-  state.step = "ready"
+  state.phase = "briefing"
+  state.step = "confirm"
+  state.confirmations = []
 }
 
 function onSwap(state: GameState, action: Extract<Action, { type: "swap" }>) {
@@ -251,7 +251,7 @@ function onSwap(state: GameState, action: Extract<Action, { type: "swap" }>) {
   if (state.mechs.some((other) => other.name === action.name && other.id !== mech.id)) {
     throw new RuleError("That mini is already out.")
   }
-  const fresh = freshMech(rulesOf(state), mech.id, action.name, mech.ownerId)
+  const fresh = freshMech(mustScenario(state.scenarioId), mech.id, variantForName(state, action.name), mech.ownerId)
   const index = state.mechs.findIndex((other) => other.id === mech.id)
   state.mechs[index] = fresh
   for (const player of state.players) player.ready = false
@@ -271,7 +271,36 @@ function onReady(state: GameState, action: Extract<Action, { type: "ready" }>) {
 function onConfirm(state: GameState, action: Extract<Action, { type: "confirm" }>) {
   requirePlayer(state, action.playerId)
   if (state.players.length < 2) throw new RuleError("Wait for the other player.")
-  if (state.phase === "gather" || (state.phase === "end" && state.step === "heat") || state.phase === "place") {
+  if (state.phase === "briefing") {
+    if (!state.confirmations.includes(action.playerId)) state.confirmations.push(action.playerId)
+    if (state.confirmations.length < 2) return
+    state.confirmations = []
+    state.phase = "roster"
+    state.step = "ready"
+    return
+  }
+  if (state.phase === "place") {
+    const step = setupSteps(state)[state.placeIndex]
+    const actor = step ? playerBySeat(state, step.who) : undefined
+    if (!actor || actor.id !== action.playerId) {
+      throw new RuleError("The other player is putting this on the table.")
+    }
+    state.placeIndex += 1
+    if (state.placeIndex >= setupSteps(state).length) {
+      state.phase = "cards"
+      state.step = "ask"
+    }
+    return
+  }
+  if (state.phase === "cards") {
+    if (currentCard(state)) throw new RuleError("Read the number on the card first.")
+    if (!state.confirmations.includes(action.playerId)) state.confirmations.push(action.playerId)
+    if (state.confirmations.length < 2) return
+    state.confirmations = []
+    startInitiative(state)
+    return
+  }
+  if (state.phase === "gather" || (state.phase === "end" && state.step === "heat")) {
     if (!state.confirmations.includes(action.playerId)) state.confirmations.push(action.playerId)
     if (state.confirmations.length < 2) return
     state.confirmations = []
@@ -279,14 +308,6 @@ function onConfirm(state: GameState, action: Extract<Action, { type: "confirm" }
       state.phase = "place"
       state.placeIndex = 0
       state.step = "confirm"
-      return
-    }
-    if (state.phase === "place") {
-      state.placeIndex += 1
-      if (state.placeIndex >= setupSteps(state).length) {
-        state.phase = "cards"
-        state.step = "ask"
-      }
       return
     }
     if (rulesOf(state).beacon) {
@@ -334,6 +355,16 @@ function onCard(state: GameState, action: Extract<Action, { type: "card" }>) {
     throw new RuleError("The other player reads this card.")
   }
   if (current.field !== action.field) throw new RuleError("That is not the number we need.")
+  if (typeof action.value !== "number") throw new RuleError("Type the number on the card.")
+  const card = mustFace(current.mech.variant)
+  const expected = cardCount(card, current.field)
+  if (action.value !== expected) {
+    current.mech.quizMisses = (current.mech.quizMisses ?? 0) + 1
+    state.notice = missSay(current.mech, card, current.field, expected)
+    return
+  }
+  current.mech.quizMisses = 0
+  state.notice = undefined
   writeCard(current.mech, action.field, action.value)
   if (!currentCard(state)) startInitiative(state)
 }
@@ -537,7 +568,7 @@ function onYesNo(state: GameState, action: Extract<Action, { type: "yesNo" }>) {
   if (action.field === "rear" && state.step === "rear") {
     combat.rear = action.yes
     if (combat.kind === "weapon") {
-      state.step = "band"
+      applyPrintedDamage(state)
       return
     }
     if (action.yes && combat.totalDamage != null) combat.totalDamage += 1
@@ -625,10 +656,21 @@ function onDice(state: GameState, action: Extract<Action, { type: "dice" }>) {
       state.step = "rear"
       return
     }
-    state.step = "band"
+    applyPrintedDamage(state)
     return
   }
   resolvePhysicalHit(state)
+}
+
+function onStar(state: GameState, action: Extract<Action, { type: "star" }>) {
+  if (state.phase !== "combat" || state.step !== "star") throw new RuleError("That box is not a star.")
+  const mech = requireOwner(state, action.playerId)
+  assertRange(action.roll, 1, 6, "Roll one die and tap that face.")
+  const combat = state.combat
+  if (!combat || !combat.range) throw new RuleError("The attack was lost. Undo and try again.")
+  const card = mustFace(mech.variant)
+  if (boxAt(card, combat.range) !== "star") throw new RuleError("That box is not a star.")
+  finishWeaponDamage(state, starDamage(action.roll, mech.weaponHits))
 }
 
 function onBand(state: GameState, action: Extract<Action, { type: "band" }>) {
@@ -1178,27 +1220,82 @@ function writeCard(mech: Mech, field: CardField, value: number | boolean) {
   }
 }
 
-function freshMech(rules: Rules, id: string, name: string, ownerId: string): Mech {
-  const mech = blankMech(id, name, ownerId)
-  if (rules.retreat) mech.skill = 4
+function freshMech(scenario: Scenario, id: string, variantId: string, ownerId: string): Mech {
+  const card = mustFace(variantId)
+  const mech = blankMech(id, card.name, ownerId)
+  mech.variant = card.id
+  mech.skill = scenario.skill
+  mech.tmm = card.tmm
+  mech.ov = card.ov
+  mech.size = card.size
+  mech.hasJump = card.jump != null
+  if (card.jump != null) mech.jumpInches = card.jump
+  if (scenario.group !== "teaching") {
+    mech.walkInches = card.walk
+    mech.armor = card.armor
+    mech.armorLeft = card.armor
+    mech.structure = card.structure
+    mech.structureLeft = card.structure
+  }
   return mech
 }
 
-function facingSay(state: GameState, player: Player): string {
-  const sides = rulesOf(state).retreat
-    ? state.mechs
-        .filter((mech) => mech.ownerId === player.id)
-        .map((mech) => sideHint(mech.name))
-        .filter((hint) => hint.length > 0)
-        .join(" ")
-    : ""
-  return `${player.name}, put ${namesOf(state, player.id)} on your home edge, facing the other side. ${sides}`.trim()
+function variantForName(state: GameState, name: string): string {
+  const scenario = mustScenario(state.scenarioId)
+  const listed = [...scenario.forces.innerSphere, ...scenario.forces.clan]
+  const match = listed.find((id) => mustFace(id).name === name)
+  return match ?? defaultFace(name).id
 }
 
-function sideHint(name: string): string {
-  if (name === "Warhammer") return "Use the side labeled 8R. Leave the 6R side face down."
-  if (name === "Timber Wolf") return "Use the side labeled Prime."
-  return ""
+function cardCount(card: ReturnType<typeof mustFace>, field: CardField): number {
+  if (field === "walk") return card.walk
+  if (field === "armor") return card.armor
+  if (field === "structure") return card.structure
+  throw new RuleError("That number is already on the card.")
+}
+
+function missSay(mech: Mech, card: ReturnType<typeof mustFace>, field: CardField, expected: number): string {
+  const where =
+    field === "walk"
+      ? "Ground move is the number on the move line. Skip the j."
+      : field === "armor"
+        ? "Armor bubbles are the open circles. Skip the red ones."
+        : "Structure bubbles are the red ones."
+  if ((mech.quizMisses ?? 0) < 2) return `That does not match the card. ${where}`
+  const unit = field === "walk" ? "inches" : "bubbles"
+  return `The side labeled ${card.side} has ${expected} ${unit}. ${where}`
+}
+
+function applyPrintedDamage(state: GameState) {
+  const combat = state.combat
+  if (!combat?.range || !combat.attackerId) throw new RuleError("The attack was lost. Undo and try again.")
+  const mech = requireMech(state, combat.attackerId)
+  const box = boxAt(mustFace(mech.variant), combat.range)
+  if (box === "star") {
+    state.step = "star"
+    return
+  }
+  finishWeaponDamage(state, boxedDamage(box, mech.weaponHits))
+}
+
+function finishWeaponDamage(state: GameState, cardDamage: number) {
+  const combat = state.combat
+  if (!combat?.range) throw new RuleError("The attack was lost. Undo and try again.")
+  combat.cardDamage = cardDamage
+  combat.totalDamage = weaponBubbles(cardDamage, combat.overheat, combat.rear, combat.range)
+  if (rulesOf(state).retreat) {
+    applyLessonHit(state)
+    return
+  }
+  state.step = "bubbles"
+}
+
+function facingSay(state: GameState, player: Player): string {
+  const sides = state.mechs
+    .filter((mech) => mech.ownerId === player.id)
+    .map((mech) => `Use the side labeled ${mustFace(mech.variant).side} on the ${mech.name}. Leave the other side face down.`)
+    .join(" ")
+  return `${player.name}, put ${namesOf(state, player.id)} on your home edge, facing the other side. ${sides}`.trim()
 }
 
 function applyLessonHit(state: GameState) {
@@ -1239,6 +1336,7 @@ function blankMech(id: string, name: string, ownerId: string): Mech {
   return {
     id,
     name,
+    variant: "",
     ownerId,
     knockedOut: false,
     heat: 0,

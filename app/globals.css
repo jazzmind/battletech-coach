@@ -329,11 +329,33 @@ a.back-link {
   margin: 0;
 }
 
-.lesson, .note, .wait {
+.lesson, .note, .wait, .mission, .tip, .ending {
   margin: 0;
   padding: 0.85rem 1rem;
   background: rgba(0, 0, 0, 0.25);
   border-left: 6px solid var(--amber);
+}
+
+.mission p, .tip p, .ending { margin: 0.4rem 0 0; }
+
+.mission .kicker, .tip .kicker { margin-top: 0.7rem; }
+
+.mission .kicker:first-child, .tip .kicker:first-child { margin-top: 0; }
+
+.mission ol {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.mission li { margin: 0.28rem 0; }
+
+.tip { border-left-color: #7eb8d4; }
+
+.hud .goal {
+  margin: 0 0 0.7rem;
+  color: var(--paper);
+  font-size: 0.95rem;
+  line-height: 1.35;
 }
 
 .wait { border-left-color: #8fb9a4; }
@@ -480,6 +502,9 @@ input[type="text"] {
   background: #111;
   border: 3px solid var(--ink);
 }
+
+.gallery { display: grid; gap: 0.35rem; }
+.gallery a { color: var(--amber); font-weight: 700; }
 
 .look-reply {
   font-size: 1.2rem;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { applyAction, createGame, currentCard } from "./flow"
+import { mustFace } from "./cards"
+import { applyAction, createGame, currentCard, setupSteps } from "./flow"
 import { present } from "./present"
 import type { Action, GameState } from "./types"
 
@@ -17,6 +18,8 @@ function boot(scenarioId: string): GameState {
     faction: "innerSphere",
   })
   state = act(state, { type: "join", playerId: "kid", name: "Sam" })
+  state = act(state, { type: "confirm", playerId: "host" })
+  state = act(state, { type: "confirm", playerId: "kid" })
   return state
 }
 
@@ -26,8 +29,8 @@ function ready(state: GameState): GameState {
   state = act(state, { type: "confirm", playerId: "host" })
   state = act(state, { type: "confirm", playerId: "kid" })
   while (state.phase === "place") {
-    state = act(state, { type: "confirm", playerId: "host" })
-    state = act(state, { type: "confirm", playerId: "kid" })
+    const step = setupSteps(state)[state.placeIndex]
+    state = act(state, { type: "confirm", playerId: step.who === "host" ? "host" : "kid" })
   }
   return state
 }
@@ -36,11 +39,17 @@ function fillCards(state: GameState): GameState {
   let guard = 0
   while (state.phase === "cards") {
     const current = currentCard(state)
-    assert.ok(current)
-    const value = current.field === "skill" ? 4 : current.field === "tmm" ? 2 : 8
-    state = act(state, { type: "card", playerId: current.mech.ownerId, field: current.field, value })
+    if (!current) {
+      const pending = state.players.find((player) => !state.confirmations.includes(player.id))
+      assert.ok(pending)
+      state = act(state, { type: "confirm", playerId: pending.id })
+    } else {
+      const card = mustFace(current.mech.variant)
+      const value = current.field === "walk" ? card.walk : current.field === "armor" ? card.armor : card.structure
+      state = act(state, { type: "card", playerId: current.mech.ownerId, field: current.field, value })
+    }
     guard += 1
-    if (guard > 20) throw new Error("card loop")
+    if (guard > 40) throw new Error("card loop")
   }
   return state
 }
@@ -69,9 +78,21 @@ describe("coach copy", () => {
     assert.match(screen.say, /Leave every other mech in the box/)
     assert.match(screen.say, /8R/)
     assert.match(screen.say, /Prime/)
+    assert.match(screen.say, /Write 4/)
     assert.doesNotMatch(screen.say, /Wasp|Atlas|Locust/)
     const pool = screen.roster?.flatMap((card) => card.options.map((option) => option.name)) ?? []
     assert.ok(pool.includes("Wasp"))
+  })
+
+  it("links a painted mini on the take-these-out screen", () => {
+    let state = boot("first-steps")
+    state = act(state, { type: "ready", playerId: "host" })
+    state = act(state, { type: "ready", playerId: "kid" })
+    const screen = present(state, "host")
+    assert.equal(screen.title, "Take these out")
+    const wolf = screen.gallery?.find((photo) => photo.name === "Timber Wolf")
+    assert.equal(wolf?.painter, "SledgeLP")
+    assert.match(wolf?.page ?? "", /thebaselair.com/)
   })
 
   it("explains the first shot, the two dice, and whose card gets the bubbles", () => {
@@ -100,12 +121,13 @@ describe("coach copy", () => {
     assert.match(watching.wait ?? "", /already counted/)
 
     state = act(state, { type: "dice", playerId: "host", roll: 8 })
-    state = act(state, { type: "band", playerId: "host", amount: 3 })
     const bubbles = present(state, "host")
+    assert.equal(bubbles.pad, undefined)
     assert.match(bubbles.say, /Sam's Timber Wolf card/)
-    assert.match(bubbles.say, /3 armor/)
-    assert.match(bubbles.say, /5 armor and 8 structure left/)
-    assert.match(bubbles.hud.rows.find((row) => row.name === "Timber Wolf")?.detail ?? "", /Armor 5/)
+    assert.match(bubbles.say, /short box counts as 4/)
+    assert.match(bubbles.say, /4 armor/)
+    assert.match(bubbles.say, /4 armor and 4 structure left/)
+    assert.match(bubbles.hud.rows.find((row) => row.name === "Timber Wolf")?.detail ?? "", /Armor 4/)
   })
 
   it("shows range modifiers as already counted", () => {

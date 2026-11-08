@@ -114,7 +114,7 @@ export function HomeScreen() {
                     onClick={() => setScenarioId(scenario.id)}
                   >
                     <strong>{scenario.title}</strong>
-                    <small>{scenario.summary}</small>
+                    <small>{scenario.chapter}. {scenario.summary}</small>
                   </button>
                 ))}
               </div>

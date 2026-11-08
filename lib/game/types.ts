@@ -15,6 +15,7 @@ export type CritEffect =
 
 export type Phase =
   | "lobby"
+  | "briefing"
   | "roster"
   | "gather"
   | "place"
@@ -106,6 +107,8 @@ export type Mech = {
   overheatUsed: number
   woke?: boolean
   declaration?: Declaration
+  variant: string
+  quizMisses?: number
 }
 
 export type AttackKind = "weapon" | "physical" | "melee" | "charge" | "dfa"
@@ -187,6 +190,7 @@ export type Action =
   | { type: "tweak"; playerId: string; delta: number }
   | { type: "dice"; playerId: string; roll: number }
   | { type: "band"; playerId: string; amount: number }
+  | { type: "star"; playerId: string; roll: number }
   | { type: "marked"; playerId: string; result: "armor" | "structure" | "out" }
   | { type: "crit"; playerId: string; effect: CritEffect }
   | { type: "ammo"; playerId: string; result: "destroyed" | "case" | "safe" }
@@ -207,11 +211,22 @@ export type Screen = {
   say: string
   note?: string
   lesson?: string
+  lessonKicker?: string
+  mission?: {
+    chapter: string
+    story: string
+    goal: string
+    unit: string
+    orders: string
+    plan: string[]
+  }
+  tip?: { title: string; text: string }
+  ending?: string
   active: boolean
   wait?: string
   choices: Choice[]
   pad?: {
-    kind: "card" | "initiative" | "jump" | "dice" | "band" | "overheat"
+    kind: "card" | "initiative" | "jump" | "dice" | "band" | "overheat" | "star"
     min: number
     max: number
     label: string
@@ -223,9 +238,11 @@ export type Screen = {
     owner: string
     options: { name: string; action: Action }[]
   }[]
+  gallery?: { name: string; painter: string; page: string }[]
   hud: {
     scenario: string
     turn: string
+    goal: string
     rows: { name: string; detail: string; mine: boolean; out: boolean }[]
   }
   over?: { winner: string; reason: string }

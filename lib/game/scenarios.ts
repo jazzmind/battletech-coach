@@ -53,18 +53,37 @@ export function rules(partial: Partial<Rules>): Rules {
 
 export type TerrainStep = { who: "host" | "guest"; say: string }
 
+export type SideBrief = {
+  unit: string
+  orders: string
+  plan: string[]
+}
+
 export type Scenario = {
   id: string
   group: Group
   title: string
   summary: string
+  chapter: string
+  story: string
+  goal: string
+  sides: Record<Faction, SideBrief>
+  ending: Record<Faction | "draw", string>
   lesson: string
   table: string
   rules: Rules
+  skill: number
   forces: Record<Faction, string[]>
   extraPieces: string[]
   terrain: TerrainStep[]
   beaconGoal: number
+}
+
+const LYRAN = "Twycross Garrison, Lyran Commonwealth"
+const FALCON = "Jade Falcon Star, Clan Jade Falcon"
+
+export function speak(text: string, innerSphere: string, clan: string): string {
+  return text.replaceAll("{is}", innerSphere).replaceAll("{clan}", clan)
 }
 
 const named = (who: "host" | "guest", say: string): TerrainStep => ({ who, say })
@@ -75,11 +94,41 @@ export const SCENARIOS: Scenario[] = [
     group: "teaching",
     title: "First Steps",
     summary: "One mech each. Two turns, then both pull back.",
+    chapter: "Chapter 1: The Challenge",
+    story:
+      "The year is 3050, on the planet Twycross. Clan Jade Falcon has arrived. Star Commander {clan} calls out one Lyran warrior. That challenge is a batchall. Lieutenant {is} answers in a Warhammer. {clan} comes in a Timber Wolf, which the Inner Sphere calls a Mad Cat, because it looks like two of their mechs mashed together. Clan honor, called zellbrigen, means they duel, then both pull back. Nobody loses.",
+    goal: "Play two turns, then both pilots pull back. Nobody loses. A shot that would knock a mech out ends the fight the same way.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Answer the batchall. Learn the shot. Walk away when the two turns are done.",
+        plan: [
+          "Stay inside 24 inches so your guns can hit.",
+          "Within 6 inches, use the short box. Past 6, use the medium box.",
+          "After two turns you both leave. That is the point of this duel.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Issue the batchall. Show the Lyrans the Mad Cat. Then walk away with your honor.",
+        plan: [
+          "The Timber Wolf shoots well past 6 inches. You can stay there.",
+          "Mark the bubbles the coach names. Armor first, then the red ones.",
+          "When two turns are done, pull back. The duel is kept.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Warhammer still stands when the duel ends. Honor is kept, and nobody is called the loser.",
+      clan: "The Mad Cat still stands when the duel ends. Honor is kept, and nobody is called the loser.",
+      draw: "Lieutenant {is} and Star Commander {clan} raise a hand and walk back. The batchall is answered. The town is next.",
+    },
     lesson:
       "Use the Warhammer side labeled 8R and the Timber Wolf side labeled Prime. The other sides are not an even match. The skill spot is blank, so both pilots are regular and the dice need 4. Count the armor bubbles and the red structure bubbles once. The coach keeps that count. Mark the same bubbles on the card. After two turns, both pilots pull back. Nobody loses.",
     table: "Clear a square about 3 feet on each side. The edges you sit on are the home edges.",
     rules: rules({ teachingRange: true, retreat: true }),
-    forces: { innerSphere: ["Warhammer"], clan: ["Timber Wolf"] },
+    skill: 4,
+    forces: { innerSphere: ["WHM-8R"], clan: ["TW-Prime"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -89,13 +138,43 @@ export const SCENARIOS: Scenario[] = [
     group: "teaching",
     title: "Streets and Trees",
     summary: "Two mechs each. Buildings, trees, jumps, and cover.",
+    chapter: "Chapter 2: The Town",
+    story:
+      "The duel is over. The Falcons push into a Twycross town. Buildings and trees break up the streets. Lieutenant {is} brings a Wasp and a Warhammer. Star Commander {clan} brings a Fire Moth and the Mad Cat. A mech against a wall, or standing in the trees, is harder to hit. A mech that jumps is harder to hit too.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Hold the town. Use the buildings and the trees.",
+        plan: [
+          "Put the Wasp against a building or in the trees. That makes it harder to hit.",
+          "The Warhammer is your big gun. Keep it where it can see down a street.",
+          "If the card has a jump move, a jump makes that mech harder to hit.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Take the town. The Fire Moth is fast and thin. Give it a wall.",
+        plan: [
+          "Park the Fire Moth against a building or in the trees.",
+          "The Timber Wolf can shoot from farther down the street.",
+          "A mech that jumped is one harder to hit.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The town stays Lyran. Lieutenant {is} holds the streets.",
+      clan: "The town belongs to the Falcons. Star Commander {clan} takes the streets.",
+      draw: "Both sides leave the town. The streets are empty.",
+    },
     lesson:
       "New choices: if the card has a jump move, you may jump. A mech that jumped is one harder to hit. A mech touching a building or standing in trees is one harder to hit. This is the teaching version of cover, not the full table.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
     rules: rules({ teachingRange: true, teachingCover: true, teachingJump: true }),
+    skill: 4,
     forces: {
-      innerSphere: ["Wasp", "Warhammer"],
-      clan: ["Fire Moth", "Timber Wolf"],
+      innerSphere: ["WSP-3W", "WHM-8R"],
+      clan: ["FM-D", "TW-Prime"],
     },
     extraPieces: [
       "2 large buildings",
@@ -119,6 +198,35 @@ export const SCENARIOS: Scenario[] = [
     group: "teaching",
     title: "Grab the Beacon",
     summary: "Hold the center token. Shooting makes you hot.",
+    chapter: "Chapter 3: The Black Box",
+    story:
+      "A Lyran listening post sits in the middle of town. The token in the center is its beacon. Hold it alone and you can call for help, or call the dropships. Lieutenant {is} has a Phoenix Hawk and a Wasp. Star Commander {clan} has a Pouncer and a Fire Moth. Every shot makes a mech Hot, and a Hot mech's next shot needs one more.",
+    goal: "Be the only one touching the beacon at the end of a turn to score 1. First to 2 wins. Knocking out every enemy mech also wins.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Get a mech on the beacon and keep the Falcons off it.",
+        plan: [
+          "Jump the Phoenix Hawk onto the beacon, then hold fire so it cools.",
+          "A mech that shoots is Hot next turn. That shot needs one more.",
+          "You score only when no enemy mech is also touching the beacon.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Take the beacon before the Lyrans can call their dropships.",
+        plan: [
+          "The Pouncer can jump onto the beacon.",
+          "The Fire Moth is fast, and one hit knocks it out. Use it to grab the beacon.",
+          "If you shoot, you are Hot next turn.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The beacon calls a Lyran dropship. Help is coming for Lieutenant {is}.",
+      clan: "The beacon calls the Falcon dropships. Star Commander {clan} owns the listening post.",
+      draw: "The beacon goes quiet. Nobody held it long enough.",
+    },
     lesson:
       "Teaching heat: a mech that shoots is Hot next turn, and its shot needs one more. If it does not shoot, it cools off. A mech alone on the beacon at the end of the turn scores 1. First to 2, or the last side standing.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
@@ -129,9 +237,10 @@ export const SCENARIOS: Scenario[] = [
       teachingHeat: true,
       beacon: true,
     }),
+    skill: 4,
     forces: {
-      innerSphere: ["Phoenix Hawk", "Wasp"],
-      clan: ["Pouncer", "Fire Moth"],
+      innerSphere: ["PXH-3K", "WSP-3W"],
+      clan: ["POU-Prime", "FM-D"],
     },
     extraPieces: [
       "2 large buildings",
@@ -157,11 +266,41 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "How Far",
     summary: "The real range bands: short, medium, and long.",
+    chapter: "Chapter 4: The Long Shot",
+    story:
+      "The fight runs onto the open flats. There is nowhere to hide, so distance is the whole fight. Lieutenant {is} brings an Atlas. It is the biggest Lyran mech in the box, built to make enemies afraid. Star Commander {clan} answers with a Warhawk. The Inner Sphere calls that mech a Masakari.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "The Atlas is slow. Make the long ground work for you.",
+        plan: [
+          "Short, up to 6 inches, adds nothing to the number you need.",
+          "Medium, past 6 and up to 24, adds 2. Long, past 24 and up to 42, adds 4.",
+          "Past 42 is too far. Your Atlas hits hardest inside 24 inches.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "The Warhawk hits hard even far away. You choose the distance.",
+        plan: [
+          "Your long box is 6. You can shoot from across the flats.",
+          "The Atlas is slow. You can walk away and keep the range you want.",
+          "Long adds 4 to the number the dice need. Medium adds 2.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Atlas walks off the flats. Twycross still has its giant.",
+      clan: "The Masakari outshoots the Atlas. The flats belong to Star Commander {clan}.",
+      draw: "Both giants fall. The flats go quiet.",
+    },
     lesson:
       "From here on, the number to beat uses the real range bands. Short, up to 6 inches, adds nothing. Medium, past 6 and up to 24, adds 2. Long, past 24 and up to 42, adds 4. Past 42 is too far. Damage still comes from that box on the card.",
     table: "Clear a square about 4 feet on each side, so a long shot can exist. Sit on opposite edges.",
     rules: rules({ realRange: true }),
-    forces: { innerSphere: ["Atlas"], clan: ["Warhawk"] },
+    skill: 4,
+    forces: { innerSphere: ["AS7-S"], clan: ["WHK-C"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -171,11 +310,41 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "They Moved",
     summary: "Add the card's TMM. Standing still is easier.",
+    chapter: "Chapter 5: The Fast Ones",
+    story:
+      "Scout mechs race the flats. Lieutenant {is} has a Wasp. Star Commander {clan} has a Fire Moth. The Clans call it a Dasher. It is the fastest mech in this box, and one good hit can knock it out. A mech that moves is harder to hit. A mech that stands still is easier to hit, and its own shot is easier.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Catch the Dasher. Make it stand still if you can.",
+        plan: [
+          "Your Wasp is fast. Moving adds its TMM, so it is harder to hit.",
+          "Standing still makes your own shot one easier, and your TMM drops to 0.",
+          "The Fire Moth dies to one solid hit. A still Dasher is the shot you want.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Stay moving. A still Fire Moth is a dead Fire Moth.",
+        plan: [
+          "Your TMM is 4 while you move. Standing still drops that to 0.",
+          "You have 1 armor and 1 structure. One hit knocks you out.",
+          "A move under 1 inch counts as standing still, and that shot is one easier.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Wasp catches the Dasher. Fast is not the same as safe.",
+      clan: "The Dasher lives and the Wasp does not. Speed wins this race.",
+      draw: "Both scouts break off. The race ends even.",
+    },
     lesson:
       "TMM is the target movement modifier on the card. A mech that walked or sprinted adds its TMM to the number you need. A mech that moved less than 1 inch stood still: its TMM is 0, and its own shot is one easier.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
     rules: rules({ realRange: true, tmm: true, standstill: true }),
-    forces: { innerSphere: ["Wasp"], clan: ["Fire Moth"] },
+    skill: 4,
+    forces: { innerSphere: ["WSP-3W"], clan: ["FM-D"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -185,11 +354,41 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "Jump Jets",
     summary: "Jumping ignores terrain and changes the shot.",
+    chapter: "Chapter 6: Over the Wall",
+    story:
+      "A town wall stands between the two lines. Lieutenant {is} brings a Phoenix Hawk. Star Commander {clan} brings a Pouncer. Both can jump the wall. Jumping ignores trees and buildings. A jump makes your own shot harder, and it makes you a little harder to hit.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Jump the wall when walking would take too long. Then decide if you shoot.",
+        plan: [
+          "A jump uses the inches next to the j. It ignores trees and buildings.",
+          "A jump adds 2 to your own shot. Land first if you need an easier roll next turn.",
+          "Someone shooting at you adds 1 on top of your TMM because you jumped.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Jump the wall and make the Phoenix Hawk come to you.",
+        plan: [
+          "The Pouncer jumps 10 inches, over the wall and the trees.",
+          "Your own shot is 2 harder in the turn you jump.",
+          "You are 1 harder to hit, on top of your TMM, because you jumped.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Phoenix Hawk holds the wall. The Pouncer falls on the far side.",
+      clan: "The Pouncer clears the wall. The Phoenix Hawk cannot keep it back.",
+      draw: "Both jumpers fall. The wall stands empty.",
+    },
     lesson:
       "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
     rules: rules({ realRange: true, tmm: true, standstill: true, realJump: true }),
-    forces: { innerSphere: ["Phoenix Hawk"], clan: ["Pouncer"] },
+    skill: 4,
+    forces: { innerSphere: ["PXH-3K"], clan: ["POU-Prime"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -199,6 +398,35 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "Trees and Walls",
     summary: "Movement cost, woods, and partial cover.",
+    chapter: "Chapter 7: The Orchard",
+    story:
+      "The Warhammer and the Mad Cat meet again, this time in the orchards outside town. Lieutenant {is} and Star Commander {clan} have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Use the orchard. Make the Mad Cat pay for every inch.",
+        plan: [
+          "Clear ground costs 1 inch of move per inch you walk. Trees cost 2.",
+          "If two-thirds of the enemy is behind a building, the shot is one harder.",
+          "Trees in the way, or a target standing in trees, are also one harder.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Cross the orchard without wasting your move in the trees.",
+        plan: [
+          "Walking through trees costs 2 inches for every inch you travel.",
+          "Hide two-thirds of the Timber Wolf behind a building when you can.",
+          "A jump would skip the tree cost. This mech does not jump, so walk the open lane.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The orchard stays Lyran. The Mad Cat backs out of the trees.",
+      clan: "The Mad Cat owns the orchard. The Warhammer is left in the trees.",
+      draw: "The trees hide an empty field. Both mechs leave.",
+    },
     lesson:
       "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. Jumping skips those costs. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
@@ -211,7 +439,8 @@ export const SCENARIOS: Scenario[] = [
       woods: true,
       terrainCost: true,
     }),
-    forces: { innerSphere: ["Warhammer"], clan: ["Timber Wolf"] },
+    skill: 4,
+    forces: { innerSphere: ["WHM-8R"], clan: ["TW-Prime"] },
     extraPieces: ["2 large buildings", "4 trees", "both dice", "a tape measure"],
     terrain: [
       named("host", "{name}, take one large building and put it in the middle of the table."),
@@ -226,11 +455,41 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "The Heat Scale",
     summary: "Overheat adds damage now and heat at the end.",
+    chapter: "Chapter 8: The Salt Flats",
+    story:
+      "The Falcons chased the Lyrans onto the salt flats. It is hot out here. Mechs carry fusion engines, and every shot makes them hotter. Star Commander {clan}'s Nova has more guns than it can keep cool. Lieutenant {is} answers in the Warhammer.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Let the Nova cook. Make it walk to you.",
+        plan: [
+          "The Nova hits hard up close. Stay past 6 inches and make it walk to you.",
+          "If it overheats, it gets slow. Heat takes inches off its walk.",
+          "Your Warhammer can add 1 overheat. That is one extra bubble, and one heat.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Spend the Nova's guns a little at a time. Save the shutdown for never.",
+        plan: [
+          "Your Nova can add 4 overheat. 1 or 2 is safe.",
+          "4 shuts you down next turn, and a still mech is easy to hit.",
+          "If you do not shoot, erase the heat.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Nova cooks itself. Lieutenant {is} and the Warhammer still have heat to spare.",
+      clan: "The Nova's guns finish the Warhammer before the heat can shut them down.",
+      draw: "Both mechs shut down in the heat. The salt flats win.",
+    },
     lesson:
       "The OV on the card is how much extra damage you may add at short or medium range. You choose it before you roll. At the end of the turn, mark that much heat. Your heat is added to your next weapon shot. Twice your heat comes off your walk inches. At heat 2 or more, TMM drops by 1 unless you jump. Heat 4 shuts the mech down for a turn. If you do not shoot, erase the heat. Water cools one heat if you did shoot.",
     table: "Clear a square about 3 feet on each side. No buildings. Sit on opposite edges.",
     rules: rules({ realRange: true, tmm: true, standstill: true, heatScale: true }),
-    forces: { innerSphere: ["Warhammer"], clan: ["Nova"] },
+    skill: 4,
+    forces: { innerSphere: ["WHM-8R"], clan: ["NOV-Prime"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -240,11 +499,41 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "Bubbles and Breaks",
     summary: "Rear hits and the critical hit table.",
+    chapter: "Chapter 9: The Back Armor",
+    story:
+      "Armor is the metal skin. Structure is the bones underneath. Lieutenant {is}'s Atlas has a lot of both. Star Commander {clan}'s Warhawk does too. A hit in the back marks one extra bubble. When the red structure bubbles get marked, something inside can break. That is a critical hit.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Get behind the Warhawk. The back is the soft part.",
+        plan: [
+          "A hit through the back of the base marks one extra bubble.",
+          "Armor bubbles go first. Then the red structure bubbles.",
+          "If structure is marked and the mech is still up, roll the critical hit table.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Keep your back away from the Atlas. Crack its structure.",
+        plan: [
+          "Turn so the Atlas shoots your front. The back would add a bubble.",
+          "The Atlas has 10 armor. You will need more than one hit.",
+          "When structure is marked, the tables card says what broke.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Atlas finds the Warhawk's back. Structure breaks, and the Masakari falls.",
+      clan: "The Warhawk cracks the Atlas open. Even a giant has bones.",
+      draw: "Both assault mechs break. The crits take them together.",
+    },
     lesson:
       "A hit in the back of the base marks one extra bubble. Armor bubbles go first, then red structure bubbles. If structure is marked and the mech is still standing, roll two dice and read the critical hit table on the tables card in the box. A roll of 12 does that even if only armor was marked. The mech comes off the table when the last structure bubble is marked.",
     table: "Clear a square about 3 feet on each side. Keep the tables card next to the dice.",
     rules: rules({ realRange: true, tmm: true, standstill: true, rear: true, crits: true }),
-    forces: { innerSphere: ["Atlas"], clan: ["Warhawk"] },
+    skill: 4,
+    forces: { innerSphere: ["AS7-S"], clan: ["WHK-C"] },
     extraPieces: ["both dice", "a tape measure", "the tables card from the box"],
     terrain: [],
     beaconGoal: 2,
@@ -254,6 +543,35 @@ export const SCENARIOS: Scenario[] = [
     group: "real",
     title: "Up Close",
     summary: "You punch when the bases are touching. You do not shoot.",
+    chapter: "Chapter 10: Fist Range",
+    story:
+      "In a narrow cut of the Great Gash, the huge canyon on Twycross, the mechs get too close to shoot. Lieutenant {is} brings a Wraith, a fast mech with fists. Star Commander {clan} brings the Nova. When the bases touch, you punch. You do not shoot.",
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Get the Wraith in close. The Nova wants room to shoot.",
+        plan: [
+          "If the bases are touching, you cannot shoot that mech. Punch it.",
+          "A punch reaches 1 inch and marks bubbles equal to your size.",
+          "You cannot punch and shoot in the same turn.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Keep a little space. Your guns are the fight.",
+        plan: [
+          "Leave a gap so the bases do not touch, and you can still shoot.",
+          "If you do punch, the damage is your size.",
+          "The Wraith jumps. It will try to land on you.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The Wraith gets in close and the Nova cannot shoot. Fists win the canyon.",
+      clan: "The Nova keeps just enough room to shoot. The Wraith never lands the punch.",
+      draw: "They meet in the middle and both fall. The canyon keeps the wrecks.",
+    },
     lesson:
       "If the bases are touching, you cannot shoot that mech. A punch reaches 1 inch, hits on the skill number plus the usual movement and cover modifiers, and marks bubbles equal to the mech's size. If the card says MEL, that melee reach is 2 inches and the damage is size plus 1. You cannot punch and shoot in the same turn.",
     table: "Clear a square about 3 feet on each side so the mechs can reach each other.",
@@ -264,7 +582,8 @@ export const SCENARIOS: Scenario[] = [
       realJump: true,
       physical: true,
     }),
-    forces: { innerSphere: ["Wraith"], clan: ["Nova"] },
+    skill: 4,
+    forces: { innerSphere: ["TR1"], clan: ["NOV-Prime"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],
     beaconGoal: 2,
@@ -274,6 +593,35 @@ export const SCENARIOS: Scenario[] = [
     group: "graduation",
     title: "The Whole Turn",
     summary: "Every quick-start step, plus a beacon.",
+    chapter: "Chapter 11: The Whole Star",
+    story:
+      "Every lesson comes together on the edge of town. The beacon is back in the center. Lieutenant {is} has the Warhammer and the Phoenix Hawk. Star Commander {clan} has the Timber Wolf and the Pouncer. This is a full quick-start turn: move, shoot, heat, the back armor, crits, punches, sprints, and charges.",
+    goal: "Be the only one touching the beacon at the end of a turn to score 1. First to 2 wins. Knocking out every enemy mech also wins.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "The Phoenix Hawk takes the beacon. The Warhammer holds the lane.",
+        plan: [
+          "Jump the Phoenix Hawk to the beacon. The Warhammer shoots whoever comes close.",
+          "Sprint is one and a half times your walk, and that mech cannot shoot.",
+          "Read any special ability on the card out loud, then use the card.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "The Pouncer jumps for the beacon. The Mad Cat shoots past it.",
+        plan: [
+          "Put the Pouncer on the beacon and the Timber Wolf where it can see.",
+          "A charge must end touching a mech that already moved.",
+          "First to 2 beacon points wins, even if both sides are still standing.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: "The beacon calls the Lyran line. Lieutenant {is} holds Twycross for one more day.",
+      clan: "The beacon calls the Falcons. Star Commander {clan}'s Star takes the field.",
+      draw: "The beacon goes quiet. Neither side holds Twycross tonight.",
+    },
     lesson:
       "This is the whole quick-start turn from the box: initiative, move, the shot number, heat, rear, crits, punches, sprints, charges, and death from above. Sprint is one and a half times the walk inches, rounded up, and that mech cannot shoot. A charge is declared while moving, only at a mech that already moved, and you must end touching it. Read any special ability on the card out loud and use the card. The tables card still decides crits. Formations, pilot cards, and battlefield support stay in the box for another day.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges. Keep the tables card out.",
@@ -296,9 +644,10 @@ export const SCENARIOS: Scenario[] = [
       beacon: true,
       specialsReminder: true,
     }),
+    skill: 4,
     forces: {
-      innerSphere: ["Warhammer", "Phoenix Hawk"],
-      clan: ["Timber Wolf", "Pouncer"],
+      innerSphere: ["WHM-8R", "PXH-3K"],
+      clan: ["TW-Prime", "POU-Prime"],
     },
     extraPieces: [
       "2 large buildings",

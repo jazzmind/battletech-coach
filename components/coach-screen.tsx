@@ -165,6 +165,7 @@ export function CoachScreen({ code }: { code: string }) {
         <aside className={`hud${lookOpen ? " look-open" : ""}`}>
           <h2>{screen.hud.turn}</h2>
           <p className="meta">{screen.hud.scenario}</p>
+          {screen.hud.goal ? <p className="goal" data-testid="goal">{screen.hud.goal}</p> : null}
           <div className="hud-body">
           {screen.hud.rows.map((row) => (
             <div key={row.name} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
@@ -194,17 +195,49 @@ export function CoachScreen({ code }: { code: string }) {
           </div>
         </aside>
         <section className="stage">
-          <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={screen.say}>
+          <ScrollPane className="stage-scroll story-pane" testId="story" more="More story below" watch={`${screen.say}:${screen.tip?.title ?? ""}:${screen.mission?.chapter ?? ""}`}>
           <p className="pane-tag">Story</p>
           <article className="say">
             <p className="kicker">{screen.kicker}</p>
             <h2 data-testid="title">{screen.title}</h2>
             <p className="aloud" data-testid="say">{screen.say}</p>
           </article>
-          {screen.lesson ? (
-            <p className="lesson">{screen.over ? <span className="kicker">What we learned</span> : null}{screen.lesson}</p>
+          {screen.mission ? (
+            <section className="mission" data-testid="mission">
+              <p className="kicker">{screen.mission.unit}</p>
+              <p><strong>Goal. </strong>{screen.mission.goal}</p>
+              <p><strong>Orders. </strong>{screen.mission.orders}</p>
+              <p className="kicker">How to think</p>
+              <ol>
+                {screen.mission.plan.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ol>
+            </section>
           ) : null}
+          {screen.lesson ? (
+            <p className="lesson">
+              {screen.over ? <span className="kicker">What we learned</span> : screen.lessonKicker ? <span className="kicker">{screen.lessonKicker}</span> : null}
+              {screen.lesson}
+            </p>
+          ) : null}
+          {screen.tip ? (
+            <aside className="tip" data-testid="tip">
+              <p className="kicker">{screen.tip.title}</p>
+              <p>{screen.tip.text}</p>
+            </aside>
+          ) : null}
+          {screen.ending ? <p className="ending" data-testid="ending">{screen.ending}</p> : null}
           {screen.note ? <p className="note">{screen.note}</p> : null}
+          {screen.gallery && screen.gallery.length > 0 ? (
+            <div className="gallery">
+              {screen.gallery.map((photo) => (
+                <a key={photo.page} href={photo.page} target="_blank" rel="noreferrer">
+                  {photo.name}, painted by {photo.painter}
+                </a>
+              ))}
+            </div>
+          ) : null}
           {screen.roster ? (
             <div className="roster">
               {screen.roster.map((card) => (
@@ -361,6 +394,7 @@ function padAction(screen: Screen, playerId: string, value: number): Action {
   if (kind === "dice") return { type: "dice", playerId, roll: value }
   if (kind === "jump") return { type: "jumpInches", playerId, inches: value }
   if (kind === "band") return { type: "band", playerId, amount: value }
+  if (kind === "star") return { type: "star", playerId, roll: value }
   if (kind === "overheat") return { type: "overheat", playerId, amount: value }
   return { type: "card", playerId, field: screen.pad?.field ?? "walk", value }
 }

@@ -107,6 +107,15 @@ export function attackPreview(input: {
   return { lines, total }
 }
 
+export function boxedDamage(box: number, weaponHits: number): number {
+  return Math.max(0, box - weaponHits)
+}
+
+export function starDamage(die: number, weaponHits: number): number {
+  const pip = die >= 4 ? 1 : 0
+  return Math.max(0, pip - weaponHits)
+}
+
 export function weaponBubbles(
   card: number,
   overheat: number,
