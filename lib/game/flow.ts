@@ -39,7 +39,7 @@ export function createGame(input: {
     code: input.code,
     scenarioId: scenario.id,
     players: [host],
-    mechs: scenario.forces[host.faction].map((name, index) => blankMech(`h${index}`, name, host.id)),
+    mechs: scenario.forces[host.faction].map((name, index) => freshMech(scenario.rules, `h${index}`, name, host.id)),
     phase: "lobby",
     step: "wait",
     confirmations: [],
@@ -114,18 +114,8 @@ export function setupSteps(state: GameState): { who: "host" | "guest"; say: stri
   }))
   const host = state.players[0]
   const guest = state.players[1]
-  if (host) {
-    steps.push({
-      who: "host",
-      say: `${host.name}, put ${namesOf(state, host.id)} on your home edge, facing the other side.`,
-    })
-  }
-  if (guest) {
-    steps.push({
-      who: "guest",
-      say: `${guest.name}, put ${namesOf(state, guest.id)} on your home edge, facing the other side.`,
-    })
-  }
+  if (host) steps.push({ who: "host", say: facingSay(state, host) })
+  if (guest) steps.push({ who: "guest", say: facingSay(state, guest) })
   return steps
 }
 
@@ -137,6 +127,8 @@ export function pieceList(state: GameState): string[] {
 
 export function nextCardField(mech: Mech, rules: Rules): CardField | null {
   if (mech.walkInches == null) return "walk"
+  if (rules.retreat && mech.armor == null) return "armor"
+  if (rules.retreat && mech.structure == null) return "structure"
   if (mech.skill == null) return "skill"
   if ((rules.tmm || rules.charge) && mech.tmm == null) return "tmm"
   if (rules.heatScale && mech.ov == null) return "ov"
@@ -242,7 +234,7 @@ function onJoin(state: GameState, action: Extract<Action, { type: "join" }>) {
   state.players.push(guest)
   const scenario = mustScenario(state.scenarioId)
   scenario.forces[faction].forEach((name, index) => {
-    state.mechs.push(blankMech(`g${index}`, name, guest.id))
+    state.mechs.push(freshMech(scenario.rules, `g${index}`, name, guest.id))
   })
   state.phase = "roster"
   state.step = "ready"
@@ -259,7 +251,7 @@ function onSwap(state: GameState, action: Extract<Action, { type: "swap" }>) {
   if (state.mechs.some((other) => other.name === action.name && other.id !== mech.id)) {
     throw new RuleError("That mini is already out.")
   }
-  const fresh = blankMech(mech.id, action.name, mech.ownerId)
+  const fresh = freshMech(rulesOf(state), mech.id, action.name, mech.ownerId)
   const index = state.mechs.findIndex((other) => other.id === mech.id)
   state.mechs[index] = fresh
   for (const player of state.players) player.ready = false
@@ -647,6 +639,10 @@ function onBand(state: GameState, action: Extract<Action, { type: "band" }>) {
   if (!combat || !combat.range) throw new RuleError("The attack was lost. Undo and try again.")
   combat.cardDamage = action.amount
   combat.totalDamage = weaponBubbles(action.amount, combat.overheat, combat.rear, combat.range)
+  if (rulesOf(state).retreat) {
+    applyLessonHit(state)
+    return
+  }
   state.step = "bubbles"
 }
 
@@ -662,6 +658,10 @@ function onMarked(state: GameState, action: Extract<Action, { type: "marked" }>)
     return
   }
   if (state.step !== "bubbles") throw new RuleError("Nothing is being marked.")
+  if (rulesOf(state).retreat) {
+    afterTarget(state)
+    return
+  }
   const combat = state.combat
   if (!combat?.targetId) throw new RuleError("The attack was lost. Undo and try again.")
   const target = requireMech(state, combat.targetId)
@@ -1028,6 +1028,10 @@ function afterCrit(state: GameState) {
 
 function beginEnd(state: GameState) {
   applyHeat(state)
+  if (rulesOf(state).retreat && state.turn >= 2) {
+    mutualRetreat(state, "Two turns are done. Both pilots pull back. Nobody lost.")
+    return
+  }
   state.phase = "end"
   state.step = "heat"
   state.confirmations = []
@@ -1088,6 +1092,7 @@ function checkWin(state: GameState): boolean {
 }
 
 function findWinner(state: GameState): { id: string; reason: string } | null {
+  if (rulesOf(state).retreat) return null
   if (state.players.length < 2) return null
   for (const player of state.players) {
     const mine = state.mechs.filter((mech) => mech.ownerId === player.id)
@@ -1162,7 +1167,82 @@ function writeCard(mech: Mech, field: CardField, value: number | boolean) {
   } else if (field === "jumpInches") {
     assertRange(value, 1, 30, "Type the inches next to the j.")
     mech.jumpInches = value
+  } else if (field === "armor") {
+    assertRange(value, 0, 16, "Count the armor bubbles on the card.")
+    mech.armor = value
+    mech.armorLeft = value
+  } else if (field === "structure") {
+    assertRange(value, 0, 12, "Count the red structure bubbles on the card.")
+    mech.structure = value
+    mech.structureLeft = value
   }
+}
+
+function freshMech(rules: Rules, id: string, name: string, ownerId: string): Mech {
+  const mech = blankMech(id, name, ownerId)
+  if (rules.retreat) mech.skill = 4
+  return mech
+}
+
+function facingSay(state: GameState, player: Player): string {
+  const sides = rulesOf(state).retreat
+    ? state.mechs
+        .filter((mech) => mech.ownerId === player.id)
+        .map((mech) => sideHint(mech.name))
+        .filter((hint) => hint.length > 0)
+        .join(" ")
+    : ""
+  return `${player.name}, put ${namesOf(state, player.id)} on your home edge, facing the other side. ${sides}`.trim()
+}
+
+function sideHint(name: string): string {
+  if (name === "Warhammer") return "Use the side labeled 8R. Leave the 6R side face down."
+  if (name === "Timber Wolf") return "Use the side labeled Prime."
+  return ""
+}
+
+function applyLessonHit(state: GameState) {
+  const combat = state.combat
+  if (!combat?.targetId || combat.totalDamage == null) throw new RuleError("The attack was lost. Undo and try again.")
+  const target = requireMech(state, combat.targetId)
+  const pool = (target.armorLeft ?? 0) + (target.structureLeft ?? 0)
+  if (combat.totalDamage > 0 && combat.totalDamage >= pool) {
+    mutualRetreat(
+      state,
+      `That shot would knock out the ${target.name}. It is not counted. Both pilots pull back. Nobody lost.`,
+    )
+    return
+  }
+  const spent = spendBubbles(target, combat.totalDamage)
+  combat.armorMarked = spent.armor
+  combat.structureMarked = spent.structure
+  state.step = "bubbles"
+}
+
+function spendBubbles(mech: Mech, amount: number): { armor: number; structure: number } {
+  const armor = Math.min(mech.armorLeft ?? 0, amount)
+  mech.armorLeft = (mech.armorLeft ?? 0) - armor
+  const structure = Math.min(mech.structureLeft ?? 0, amount - armor)
+  mech.structureLeft = (mech.structureLeft ?? 0) - structure
+  return { armor, structure }
+}
+
+function mutualRetreat(state: GameState, reason: string) {
+  state.phase = "over"
+  state.step = "done"
+  state.winnerId = undefined
+  state.activeMechId = undefined
+  state.winReason = `${reason} ${bubbleReport(state)}`
+}
+
+function bubbleReport(state: GameState): string {
+  return state.mechs
+    .map((mech) => {
+      const owner = state.players.find((player) => player.id === mech.ownerId)
+      const who = owner?.name ?? "That pilot"
+      return `${who}'s ${mech.name} has ${mech.armorLeft ?? 0} armor and ${mech.structureLeft ?? 0} structure left.`
+    })
+    .join(" ")
 }
 
 function blankMech(id: string, name: string, ownerId: string): Mech {

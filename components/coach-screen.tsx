@@ -5,6 +5,7 @@ import { present } from "@/lib/game/present"
 import type { Action, GameState, Screen } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
 import { Mark } from "./mark"
+import { TableLook } from "./table-look"
 
 export function CoachScreen({ code }: { code: string }) {
   const [playerId, setPlayerId] = useState<string | null>(null)
@@ -13,6 +14,7 @@ export function CoachScreen({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState("")
+  const [poolFor, setPoolFor] = useState<string | null>(null)
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
@@ -161,13 +163,23 @@ export function CoachScreen({ code }: { code: string }) {
                 <div key={card.mechId} className="roster-card">
                   <h3>{card.name}</h3>
                   <p>{card.owner}</p>
-                  <div className="swaps">
-                    {card.options.map((option) => (
-                      <button key={option.name} type="button" disabled={busy} onClick={() => void send(option.action)}>
-                        {option.name}
+                  {card.options.length > 0 && poolFor !== card.mechId ? (
+                    <button className="ghost" type="button" disabled={busy} onClick={() => setPoolFor(card.mechId)}>
+                      Choose a different mech
+                    </button>
+                  ) : null}
+                  {poolFor === card.mechId ? (
+                    <div className="swaps">
+                      <button className="ghost" type="button" onClick={() => setPoolFor(null)}>
+                        Keep {card.name}
                       </button>
-                    ))}
-                  </div>
+                      {card.options.map((option) => (
+                        <button key={option.name} type="button" disabled={busy} onClick={() => void send(option.action)}>
+                          {option.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -194,7 +206,8 @@ export function CoachScreen({ code }: { code: string }) {
               Undo last tap
             </button>
           ) : null}
-          {screen.over ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
+          {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
+          <TableLook screen={screen} playerName={state.players.find((player) => player.id === playerId)?.name ?? name} />
         </section>
       </div>
     </main>
@@ -216,6 +229,7 @@ function Pad({
   for (let value = pad.min; value <= pad.max; value += 1) numbers.push(value)
   return (
     <div className="pad" aria-label={pad.label}>
+      <p className="pad-label">{pad.label}</p>
       {numbers.map((value) => (
         <button key={value} type="button" data-testid={`pad-${value}`} disabled={disabled} onClick={() => onPick(value)}>
           {value}

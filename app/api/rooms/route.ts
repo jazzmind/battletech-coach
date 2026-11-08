@@ -18,10 +18,16 @@ export async function POST(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: "The coach could not read that." }, { status: 400 })
+    return NextResponse.json(
+      { error: "The coach could not read that." },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    )
   }
   if (!body.scenarioId || !getScenario(body.scenarioId)) {
-    return NextResponse.json({ error: "Pick a scenario." }, { status: 400 })
+    return NextResponse.json(
+      { error: "Pick a scenario." },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    )
   }
   const faction = body.faction === "clan" ? "clan" : "innerSphere"
   const playerId = typeof body.playerId === "string" && body.playerId.length >= 8 ? body.playerId : crypto.randomUUID()
@@ -37,16 +43,24 @@ export async function POST(request: Request) {
       })
       try {
         await createRoom(state)
-        return NextResponse.json({ state, playerId })
+        return NextResponse.json({ state, playerId }, { headers: { "cache-control": "no-store" } })
       } catch (error) {
         if (error instanceof Error && error.message === "That code is already in use.") continue
         throw error
       }
     }
-    return NextResponse.json({ error: "Could not make a code. Try again." }, { status: 500 })
+    return NextResponse.json(
+      { error: "Could not make a code. Try again." },
+      { status: 500, headers: { "cache-control": "no-store" } },
+    )
   } catch (error) {
-    if (error instanceof RuleError) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (error instanceof RuleError) {
+      return NextResponse.json({ error: error.message }, { status: 400, headers: { "cache-control": "no-store" } })
+    }
     console.error(error)
-    return NextResponse.json({ error: "The coach could not start the game." }, { status: 500 })
+    return NextResponse.json(
+      { error: "The coach could not start the game." },
+      { status: 500, headers: { "cache-control": "no-store" } },
+    )
   }
 }

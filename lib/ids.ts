@@ -1,8 +1,12 @@
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 export function makeCode(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(4))
-  return Array.from(bytes, (byte) => ALPHABET[byte % ALPHABET.length]).join("")
+  const { randomInt } = require("node:crypto") as { randomInt: (max: number) => number }
+  let code = ""
+  for (let index = 0; index < 4; index += 1) {
+    code += ALPHABET[randomInt(ALPHABET.length)]
+  }
+  return code
 }
 
 export function savePlayerId(playerId: string): void {

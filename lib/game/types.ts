@@ -30,6 +30,8 @@ export type Group = "teaching" | "real" | "graduation"
 export type CardField =
   | "walk"
   | "skill"
+  | "armor"
+  | "structure"
   | "tmm"
   | "ov"
   | "size"
@@ -58,6 +60,7 @@ export type Rules = {
   firingArc: boolean
   beacon: boolean
   specialsReminder: boolean
+  retreat: boolean
 }
 
 export type Player = {
@@ -80,6 +83,10 @@ export type Mech = {
   knockedOut: boolean
   walkInches?: number
   skill?: number
+  armor?: number
+  structure?: number
+  armorLeft?: number
+  structureLeft?: number
   tmm?: number
   size?: number
   ov?: number
@@ -115,6 +122,8 @@ export type CombatState = {
   rear: boolean
   cardDamage?: number
   totalDamage?: number
+  armorMarked?: number
+  structureMarked?: number
   selfDamage?: number
   selfDone?: boolean
   critDone: boolean

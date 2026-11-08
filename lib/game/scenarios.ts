@@ -43,6 +43,7 @@ const RULE_KEYS: (keyof Rules)[] = [
   "firingArc",
   "beacon",
   "specialsReminder",
+  "retreat",
 ]
 
 export function rules(partial: Partial<Rules>): Rules {
@@ -73,11 +74,11 @@ export const SCENARIOS: Scenario[] = [
     id: "first-steps",
     group: "teaching",
     title: "First Steps",
-    summary: "One mech each. Move, shoot, mark bubbles.",
+    summary: "One mech each. Two turns, then both pull back.",
     lesson:
-      "This game teaches only three things: move up to the inches on the card, shoot if the target is within 24 inches, and mark bubbles. Short is 6 inches or less. Medium is the rest of that 24. The number you need is the skill number on the card.",
+      "Use the Warhammer side labeled 8R and the Timber Wolf side labeled Prime. The other sides are not an even match. The skill spot is blank, so both pilots are regular and the dice need 4. Count the armor bubbles and the red structure bubbles once. The coach keeps that count. Mark the same bubbles on the card. After two turns, both pilots pull back. Nobody loses.",
     table: "Clear a square about 3 feet on each side. The edges you sit on are the home edges.",
-    rules: rules({ teachingRange: true }),
+    rules: rules({ teachingRange: true, retreat: true }),
     forces: { innerSphere: ["Warhammer"], clan: ["Timber Wolf"] },
     extraPieces: ["both dice", "a tape measure"],
     terrain: [],

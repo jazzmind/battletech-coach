@@ -1,15 +1,14 @@
-import { adjustedMove, needSentence } from "./math"
+import { adjustedMove } from "./math"
 import { factionLabel, mustScenario, rosterFor } from "./scenarios"
 import {
   currentCard,
   enemiesOf,
   modesFor,
   nextActivator,
-  pieceList,
   rulesOf,
   setupSteps,
 } from "./flow"
-import type { Action, Choice, GameState, Mech, MoveMode, Player, Screen } from "./types"
+import type { Action, Choice, GameState, Mech, MoveMode, Player, Rules, Screen } from "./types"
 
 const MODE_LABEL: Record<MoveMode, { label: string; hint: string }> = {
   stand: { label: "Stand still", hint: "Less than 1 inch. Easier to hit, and your shot is one easier." },
@@ -27,10 +26,10 @@ export function present(state: GameState, playerId: string): Screen {
 
   if (state.phase === "over") {
     const winner = state.players.find((player) => player.id === state.winnerId)
-    screen.kicker = "Game over"
-    screen.title = winner ? `${winner.name} wins` : "Game over"
+    screen.kicker = winner ? "Game over" : "Both pull back"
+    screen.title = winner ? `${winner.name} wins` : "Nobody lost"
     screen.say = state.winReason ?? "The battle is finished."
-    screen.over = { winner: winner?.name ?? "Someone", reason: state.winReason ?? "" }
+    screen.over = { winner: winner?.name ?? "", reason: state.winReason ?? "" }
     return screen
   }
 
@@ -62,9 +61,16 @@ export function present(state: GameState, playerId: string): Screen {
 
 function presentRoster(state: GameState, screen: Screen, me: Player): Screen {
   const scenario = mustScenario(state.scenarioId)
+  const seats = state.players.map((player) => {
+    const names = state.mechs.filter((mech) => mech.ownerId === player.id).map((mech) => mech.name)
+    return `${player.name} uses ${joinList(names.map((name) => `the ${name}`))}`
+  })
   screen.kicker = "Choose minis"
-  screen.title = scenario.title
-  screen.say = "These are the minis for this game. Tap a different name to swap one. Either of you can change them."
+  screen.title = "These mechs only"
+  const sides = scenario.rules.retreat
+    ? " Flip the Warhammer to the side labeled 8R. Flip the Timber Wolf to the side labeled Prime. Leave the other side face down."
+    : ""
+  screen.say = `${seats.join(". ")}. Take those minis and their cards out of the box. Leave every other mech in the box.${sides} Open the list only if you want to swap one.`
   screen.lesson = scenario.lesson
   screen.active = true
   screen.roster = state.mechs.map((mech) => {
@@ -100,9 +106,10 @@ function presentRoster(state: GameState, screen: Screen, me: Player): Screen {
 function presentGather(state: GameState, screen: Screen, me: Player): Screen {
   const scenario = mustScenario(state.scenarioId)
   const names = state.players.map((player) => player.name).join(" and ")
+  const mechs = state.mechs.map((mech) => `the ${mech.name}`)
   screen.kicker = "Set the table"
   screen.title = "Take these out"
-  screen.say = `${names}. ${scenario.table} Take these out of the box: ${pieceList(state).join(", ")}. Leave the rest in the box.`
+  screen.say = `${names}. ${scenario.table} Take out only ${joinList(mechs)}, with their cards. Also take ${joinList(scenario.extraPieces)}. Leave every other mech in the box.`
   screen.lesson = scenario.lesson
   return bothConfirm(state, screen, me, "gather-ok", "They're out")
 }
@@ -127,8 +134,10 @@ function presentCards(state: GameState, screen: Screen, me: Player): Screen {
   const owner = ownerOf(state, current.mech)
   screen.title = current.mech.name
   const prompts: Record<string, string> = {
-    walk: `${owner.name}, what is the ground move in inches on the ${current.mech.name} card? Not the jump number.`,
-    skill: `${owner.name}, what skill number is written on the ${current.mech.name} card? A regular pilot is 4.`,
+    walk: `${owner.name}, what is the ground move in inches on the ${current.mech.name} card? Not the jump number. That is how far it can walk.`,
+    armor: `${owner.name}, count the armor bubbles on the ${current.mech.name} card. Those are the open circles, not the red ones. The skill spot is blank, so this pilot is regular and the dice need 4.`,
+    structure: `${owner.name}, count the red structure bubbles on the ${current.mech.name} card.`,
+    skill: `${owner.name}, what skill number is written on the ${current.mech.name} card? A regular pilot is 4. When it shoots, you roll two dice and add them. This skill is where that target starts. You do not add the skill to the dice.`,
     tmm: `${owner.name}, what is the TMM on the ${current.mech.name} card? That is the number that makes it harder to hit when it moves.`,
     ov: `${owner.name}, how many overheat boxes are on the ${current.mech.name} card before the S? Tap 0 if there is no OV.`,
     size: `${owner.name}, what size is the ${current.mech.name}? It is 1, 2, 3, or 4.`,
@@ -150,6 +159,8 @@ function presentCards(state: GameState, screen: Screen, me: Player): Screen {
   }
   const pads = {
     walk: { min: 1, max: 30, label: "Walk inches" },
+    armor: { min: 0, max: 16, label: "Armor bubbles" },
+    structure: { min: 0, max: 12, label: "Structure bubbles" },
     skill: { min: 0, max: 8, label: "Skill" },
     tmm: { min: 0, max: 6, label: "TMM" },
     ov: { min: 0, max: 6, label: "Overheat boxes" },
@@ -164,7 +175,8 @@ function presentCards(state: GameState, screen: Screen, me: Player): Screen {
 function presentInitiative(state: GameState, screen: Screen, me: Player): Screen {
   screen.kicker = state.turn === 1 ? "First turn" : `Turn ${state.turn}`
   screen.title = "Roll initiative"
-  screen.say = "Each of you roll two dice and add them. Type your total. The lower roll moves first. A tie means roll again."
+  screen.lesson = mustScenario(state.scenarioId).lesson
+  screen.say = "Each of you roll two dice and add them. Type that total. Do not add anything else. The lower roll moves first. A tie means roll again."
   if (state.initiative[me.id] == null) {
     screen.active = true
     screen.pad = { kind: "initiative", min: 2, max: 12, label: "Your total" }
@@ -337,9 +349,14 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
 
   if (state.step === "kind") {
     screen.title = mech.name
-    screen.say = `${owner.name}, does the ${mech.name} shoot, or hold fire?`
+    screen.say = shotChoiceSay(owner.name, mech.name, rules)
     const choices: Choice[] = [
-      { id: "shoot", label: "Shoot", action: { type: "kind", playerId: me.id, kind: "weapon" } },
+      {
+        id: "shoot",
+        label: "Shoot",
+        hint: "Then roll two dice and add them. Tap that total. The coach counts skill and modifiers.",
+        action: { type: "kind", playerId: me.id, kind: "weapon" },
+      },
     ]
     if (rules.physical) {
       choices.push({
@@ -355,7 +372,12 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
         action: { type: "kind", playerId: me.id, kind: "melee" },
       })
     }
-    choices.push({ id: "hold", label: "Hold fire", action: { type: "kind", playerId: me.id, kind: "hold" } })
+    choices.push({
+      id: "hold",
+      label: "Hold fire",
+      hint: "No roll, and no bubbles.",
+      action: { type: "kind", playerId: me.id, kind: "hold" },
+    })
     return ownerOnly(screen, mine, owner.name, choices)
   }
 
@@ -409,20 +431,35 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     screen.title = "How far?"
     screen.say = `${owner.name}, measure from base edge to base edge. What band is the ${target?.name ?? "target"} in?`
     const choices: Choice[] = [
-      { id: "short", label: "Short", hint: "6 inches or less", action: { type: "range", playerId: me.id, range: "short" } },
-      { id: "medium", label: "Medium", hint: "Past 6, up to 24 inches", action: { type: "range", playerId: me.id, range: "medium" } },
+      {
+        id: "short",
+        label: "Short",
+        hint: rules.realRange
+          ? "6 inches or less. Adds 0 to the number the dice need."
+          : "6 inches or less. Use the short damage box. The dice still need your skill.",
+        action: { type: "range", playerId: me.id, range: "short" },
+      },
+      {
+        id: "medium",
+        label: "Medium",
+        hint: rules.realRange
+          ? "Past 6, up to 24 inches. Adds 2 to the number the dice need."
+          : "Past 6, up to 24 inches. Use the medium damage box. The dice still need your skill.",
+        action: { type: "range", playerId: me.id, range: "medium" },
+      },
     ]
     if (rules.realRange) {
       choices.push({
         id: "long",
         label: "Long",
-        hint: "Past 24, up to 42 inches",
+        hint: "Past 24, up to 42 inches. Adds 4 to the number the dice need.",
         action: { type: "range", playerId: me.id, range: "long" },
       })
     }
     choices.push({
       id: "toofar",
       label: "Too far",
+      hint: rules.realRange ? "Past 42 inches. This shot cannot hit." : "Past 24 inches. This shot cannot hit.",
       action: { type: "range", playerId: me.id, range: "tooFar" },
     })
     choices.push({
@@ -448,19 +485,23 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
 
   if (state.step === "roll") {
     const total = combat?.targetNumber ?? 0
+    const lines = combat?.lines ?? []
     screen.title = total <= 2 ? "Any roll hits" : `Need ${total}+`
-    screen.say = `${owner.name}, ${needSentence(total)} ${breakdown(combat?.lines ?? [])}`
+    screen.say = rollSay(owner.name, total, lines)
     if (rules.specialsReminder) {
-      screen.note = [state.notice, "If a special ability on a card changes this number, tap it before you roll."]
+      screen.note = [state.notice, "If a special ability on a card changes this number, tap it before you roll. Then roll the two dice."]
         .filter(Boolean)
         .join(" ")
     }
     if (!mine) {
-      screen.wait = `Watch ${owner.name} roll for the ${mech.name}.`
+      screen.wait =
+        total <= 2
+          ? `Watch ${owner.name} roll two dice and add them. Any total hits. Skill and modifiers are already counted.`
+          : `Watch ${owner.name} roll two dice and add them. The total needs to be ${total} or more. Skill and modifiers are already counted.`
       return screen
     }
     screen.active = true
-    screen.pad = { kind: "dice", min: 2, max: 12, label: "Dice total" }
+    screen.pad = { kind: "dice", min: 2, max: 12, label: "Sum of the two dice" }
     if (rules.specialsReminder) {
       screen.choices = [
         { id: "tweak-up", label: "Card adds 1", action: { type: "tweak", playerId: me.id, delta: 1 } },
@@ -487,7 +528,7 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
   if (state.step === "band") {
     const band = combat?.range ?? "short"
     screen.title = `${band[0].toUpperCase()}${band.slice(1)} damage`
-    screen.say = `${owner.name}, what number is in the ${band} box on the ${mech.name} card? If weapon hits have lowered it, use the lowered number. A 0 with a star means roll one die: on 4 or more, type 1, otherwise type 0.`
+    screen.say = `${owner.name}, what number is in the ${band} box on the ${mech.name} card? That is how many bubbles you will mark on the mech you hit. If weapon hits have lowered it, use the lowered number. A 0 with a star means roll one die: on 4 or more, type 1, otherwise type 0.`
     if (!mine) {
       screen.wait = `${owner.name} is reading the damage box.`
       return screen
@@ -497,16 +538,40 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
     return screen
   }
 
+  if (state.step === "bubbles" && rules.retreat && target) {
+    const targetOwner = ownerOf(state, target)
+    const armor = combat?.armorMarked ?? 0
+    const structure = combat?.structureMarked ?? 0
+    const marked = [armor > 0 ? `${armor} armor` : "", structure > 0 ? `${structure} structure` : ""]
+      .filter((part) => part.length > 0)
+      .join(" and ")
+    screen.title = marked.length > 0 ? `Mark ${marked}` : "No bubbles"
+    screen.say = `${owner.name}, the coach counted ${marked || "no bubbles"} on ${targetOwner.name}'s ${target.name} card. Mark those same bubbles on the card. ${target.name} has ${target.armorLeft ?? 0} armor and ${target.structureLeft ?? 0} structure left.`
+    return ownerOnly(screen, mine, owner.name, [
+      { id: "armor", label: "The card matches", action: { type: "marked", playerId: me.id, result: "armor" } },
+    ])
+  }
+
   if (state.step === "bubbles") {
     const amount = combat?.totalDamage ?? 0
+    const targetOwner = target ? ownerOf(state, target) : undefined
+    const whose = target && targetOwner ? `${targetOwner.name}'s ${target.name} card` : "the target's card"
     screen.title = `Mark ${amount}`
-    screen.say = `${owner.name}, mark ${amount} bubble${amount === 1 ? "" : "s"} on the ${target?.name ?? "target"} card. Armor first, then the red structure bubbles.`
+    screen.say = `${owner.name}, the ${mech.name} hit. Mark ${amount} bubble${amount === 1 ? "" : "s"} on ${whose}. That is your opponent's card, not your own. Fill the armor bubbles first, then the red structure bubbles.`
+    if (!rules.crits) {
+      screen.say += " If the last structure bubble is filled, that mech is knocked out and comes off the table."
+    }
     if ((combat?.overheat ?? 0) > 0 && combat?.range !== "long") {
       screen.say += ` That includes ${combat?.overheat} from overheat.`
     }
     if (combat?.rear) screen.say += " That includes 1 because it hit the back."
     const choices: Choice[] = [
-      { id: "armor", label: "Still has armor", action: { type: "marked", playerId: me.id, result: "armor" } },
+      {
+        id: "armor",
+        label: "Still has armor",
+        hint: "Bubbles are left on the mech you hit.",
+        action: { type: "marked", playerId: me.id, result: "armor" },
+      },
     ]
     if (rules.crits) {
       choices.push({
@@ -515,7 +580,12 @@ function presentCombat(state: GameState, screen: Screen, me: Player): Screen {
         action: { type: "marked", playerId: me.id, result: "structure" },
       })
     }
-    choices.push({ id: "out", label: "Knocked out", action: { type: "marked", playerId: me.id, result: "out" } })
+    choices.push({
+      id: "out",
+      label: "Knocked out",
+      hint: "The last structure bubble is marked. Take that mini off the table.",
+      action: { type: "marked", playerId: me.id, result: "out" },
+    })
     if (!rules.crits) {
       choices[0].label = "Still standing"
     }
@@ -599,7 +669,9 @@ function presentEnd(state: GameState, screen: Screen, me: Player): Screen {
   screen.kicker = "End of the turn"
   screen.title = "Mark the cards"
   screen.say = heatSay(state)
-  if (!rules.heatScale && !rules.teachingHeat) {
+  if (rules.retreat) {
+    screen.say = "The first turn is over. One more turn, then both pilots pull back. Nobody will lose."
+  } else if (!rules.heatScale && !rules.teachingHeat) {
     screen.say = "The turn is over. Mechs still on the table stay where they are."
   }
   return bothConfirm(state, screen, me, "heat-ok", "Cards are marked")
@@ -681,6 +753,31 @@ function bothConfirm(state: GameState, screen: Screen, me: Player, id: string, l
   return screen
 }
 
+function shotChoiceSay(ownerName: string, mechName: string, rules: Rules): string {
+  const dice = "If you shoot, roll two dice and add them. Tap that total. Do not add your skill yourself."
+  const firstGame =
+    rules.teachingRange && !rules.realRange && !rules.teachingCover && !rules.teachingJump && !rules.teachingHeat
+  const range = firstGame
+    ? " Within 6 inches, use the short damage box on your card. Past 6 and up to 24, use the medium box. Past 24, hold fire. The number the dice need is your skill either way."
+    : ""
+  return `${ownerName}, does the ${mechName} shoot, or hold fire? ${dice}${range}`
+}
+
+function rollSay(ownerName: string, total: number, lines: { label: string; amount: number }[]): string {
+  const extras = lines.some((line) => line.label !== "Skill")
+  const meaning = extras
+    ? "A plus makes the shot harder. A minus makes it easier."
+    : "The skill spot on the card is blank. A regular pilot is 4. Nothing else changes the skill on this shot."
+  const need = total <= 2 ? "Any total hits." : `The two dice need ${total} or more.`
+  return `${ownerName}, roll two dice and add them. Tap that total. Do not add the skill or any modifiers to the dice. The coach already counted them. ${breakdown(lines)} ${meaning} ${need}`
+}
+
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? ""
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`
+}
+
 function breakdown(lines: { label: string; amount: number }[]): string {
   if (lines.length === 0) return ""
   return lines
@@ -719,6 +816,8 @@ function blank(state: GameState, playerId: string): Screen {
 function hudDetail(mech: Mech): string {
   if (mech.knockedOut) return "Knocked out"
   const bits: string[] = []
+  if (mech.armorLeft != null) bits.push(`Armor ${mech.armorLeft}`)
+  if (mech.structureLeft != null) bits.push(`Structure ${mech.structureLeft}`)
   if (mech.shutdown) bits.push("Shut down")
   if (mech.woke) bits.push("Wakes up")
   if (mech.hot) bits.push("Hot")

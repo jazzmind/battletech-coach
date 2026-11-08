@@ -170,7 +170,7 @@ button:focus-visible, input:focus-visible {
   gap: 0.7rem;
 }
 
-.choices button, .pad button, .swaps button, .primary, .ghost {
+.choices button, .pad button, .swaps button, .primary, .ghost, .look button:not(.ghost) {
   min-height: 4.2rem;
   border: 3px solid var(--ink);
   background: var(--signal);
@@ -190,6 +190,12 @@ button:focus-visible, input:focus-visible {
 
 .pad {
   grid-template-columns: repeat(auto-fit, minmax(4.4rem, 1fr));
+}
+
+.pad-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 700;
 }
 
 .pad button { text-align: center; justify-content: center; }
@@ -263,6 +269,44 @@ input[type="text"] {
   text-align: center;
   font-weight: 700;
 }
+
+.look {
+  display: grid;
+  gap: 0.75rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.look p { margin: 0; }
+
+.look a { color: var(--ink); font-weight: 700; }
+
+.look-actions, .look-key { display: grid; gap: 0.7rem; }
+
+.look-key input {
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  min-height: 3.4rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 1.1rem;
+}
+
+.look-video {
+  width: 100%;
+  background: #111;
+  border: 3px solid var(--ink);
+}
+
+.look-reply {
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.look-open { width: 100%; }
 
 @media (min-width: 960px) {
   .play { grid-template-columns: 290px 1fr; align-items: start; }

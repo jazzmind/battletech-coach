@@ -31,7 +31,7 @@ function boot(scenarioId: string, faction: "innerSphere" | "clan" = "innerSphere
 
 function fillCards(
   state: GameState,
-  values: Record<string, { walk: number; skill: number; tmm?: number; ov?: number; size?: number; jump?: boolean; jumpInches?: number }>,
+  values: Record<string, { walk: number; skill: number; tmm?: number; ov?: number; size?: number; jump?: boolean; jumpInches?: number; armor?: number; structure?: number }>,
 ): GameState {
   let guard = 0
   while (state.phase === "cards") {
@@ -42,6 +42,8 @@ function fillCards(
     let value: number | boolean
     if (current.field === "jump") value = Boolean(spec.jump)
     else if (current.field === "jumpInches") value = spec.jumpInches ?? 8
+    else if (current.field === "armor") value = spec.armor ?? 8
+    else if (current.field === "structure") value = spec.structure ?? 4
     else value = spec[current.field] ?? 0
     state = act(state, { type: "card", playerId: current.mech.ownerId, field: current.field, value })
     guard += 1
@@ -133,11 +135,12 @@ describe("teaching target number", () => {
 })
 
 describe("first steps play", () => {
-  it("walks a full turn and knocks a mech out", () => {
+  it("counts bubbles for two turns and then both pull back", () => {
     let state = fillCards(boot("first-steps"), {
-      Warhammer: { walk: 8, skill: 4 },
-      "Timber Wolf": { walk: 10, skill: 4 },
+      Warhammer: { walk: 8, skill: 4, armor: 8, structure: 4 },
+      "Timber Wolf": { walk: 10, skill: 4, armor: 8, structure: 4 },
     })
+    assert.equal(state.mechs.every((mech) => mech.skill === 4), true)
     state = rollInit(state, "host")
     assert.equal(state.mechs.find((mech) => mech.id === state.activeMechId)?.name, "Warhammer")
     state = moveWalk(state, "host")
@@ -149,8 +152,9 @@ describe("first steps play", () => {
     assert.equal(state.combat?.targetNumber, 4)
     state = act(state, { type: "dice", playerId: "host", roll: 8 })
     state = act(state, { type: "band", playerId: "host", amount: 3 })
-    assert.equal(state.combat?.totalDamage, 3)
-    state = act(state, { type: "marked", playerId: "host", result: "armor" })
+    assert.equal(state.mechs.find((mech) => mech.id === "g0")?.armorLeft, 5)
+    state = act(state, { type: "marked", playerId: "host", result: "out" })
+    assert.equal(state.mechs.find((mech) => mech.id === "g0")?.knockedOut, false)
     state = act(state, { type: "kind", playerId: "kid", kind: "hold" })
     assert.equal(state.phase, "end")
     state = act(state, { type: "confirm", playerId: "host" })
@@ -166,10 +170,34 @@ describe("first steps play", () => {
     state = act(state, { type: "range", playerId: "host", range: "short" })
     state = act(state, { type: "dice", playerId: "host", roll: 6 })
     state = act(state, { type: "band", playerId: "host", amount: 5 })
-    state = act(state, { type: "marked", playerId: "host", result: "out" })
+    state = act(state, { type: "marked", playerId: "host", result: "armor" })
+    state = act(state, { type: "kind", playerId: "kid", kind: "hold" })
     assert.equal(state.phase, "over")
-    assert.equal(state.winnerId, "host")
-    assert.match(state.winReason ?? "", /knocked out/)
+    assert.equal(state.winnerId, undefined)
+    assert.match(state.winReason ?? "", /Nobody lost/)
+    assert.match(state.winReason ?? "", /0 armor and 4 structure/)
+  })
+
+  it("ignores a hit that would destroy a mech and both pull back", () => {
+    let state = fillCards(boot("first-steps"), {
+      Warhammer: { walk: 8, skill: 4, armor: 3, structure: 2 },
+      "Timber Wolf": { walk: 10, skill: 4, armor: 3, structure: 2 },
+    })
+    state = rollInit(state, "host")
+    state = moveWalk(state, "host")
+    state = moveWalk(state, "kid")
+    state = act(state, { type: "kind", playerId: "host", kind: "weapon" })
+    state = act(state, { type: "target", playerId: "host", targetId: "g0" })
+    state = act(state, { type: "range", playerId: "host", range: "short" })
+    state = act(state, { type: "dice", playerId: "host", roll: 8 })
+    state = act(state, { type: "band", playerId: "host", amount: 6 })
+    const wolf = state.mechs.find((mech) => mech.id === "g0")
+    assert.equal(wolf?.armorLeft, 3)
+    assert.equal(wolf?.structureLeft, 2)
+    assert.equal(wolf?.knockedOut, false)
+    assert.equal(state.phase, "over")
+    assert.equal(state.winnerId, undefined)
+    assert.match(state.winReason ?? "", /not counted/)
   })
 
   it("refuses the other player's buttons", () => {
