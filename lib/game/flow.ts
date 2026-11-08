@@ -1232,17 +1232,7 @@ function mutualRetreat(state: GameState, reason: string) {
   state.step = "done"
   state.winnerId = undefined
   state.activeMechId = undefined
-  state.winReason = `${reason} ${bubbleReport(state)}`
-}
-
-function bubbleReport(state: GameState): string {
-  return state.mechs
-    .map((mech) => {
-      const owner = state.players.find((player) => player.id === mech.ownerId)
-      const who = owner?.name ?? "That pilot"
-      return `${who}'s ${mech.name} has ${mech.armorLeft ?? 0} armor and ${mech.structureLeft ?? 0} structure left.`
-    })
-    .join(" ")
+  state.winReason = reason
 }
 
 function blankMech(id: string, name: string, ownerId: string): Mech {

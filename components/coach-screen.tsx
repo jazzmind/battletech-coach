@@ -1,9 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { present } from "@/lib/game/present"
+import { SCENARIOS } from "@/lib/game/scenarios"
 import type { Action, GameState, Screen } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
+import { rememberGame } from "@/lib/recent"
 import { Mark } from "./mark"
 import { TableLook } from "./table-look"
 
@@ -46,6 +49,17 @@ export function CoachScreen({ code }: { code: string }) {
       clearInterval(timer)
     }
   }, [code, playerId])
+
+  useEffect(() => {
+    if (!state) return
+    const scenario = SCENARIOS.find((item) => item.id === state.scenarioId)
+    rememberGame({
+      code: state.code,
+      scenarioId: state.scenarioId,
+      scenario: scenario?.title ?? state.scenarioId,
+      turn: state.phase === "over" ? "Finished" : state.turn > 0 ? `Turn ${state.turn}` : "Setup",
+    })
+  }, [state])
 
   async function send(action: Action, version = state?.version) {
     if (!playerId || version == null) return
@@ -91,7 +105,8 @@ export function CoachScreen({ code }: { code: string }) {
     return (
       <main className="wrap">
         <h1>No game {code}</h1>
-        <p>Check the code and try again.</p>
+        <p>That table is gone. Check the code, or go back and start another.</p>
+        <Link href="/" className="primary back-link" data-testid="go-back">Go back</Link>
       </main>
     )
   }
@@ -117,7 +132,13 @@ export function CoachScreen({ code }: { code: string }) {
           <button className="primary" type="button" disabled={busy || name.trim().length === 0} onClick={() => void join()}>
             Sit down
           </button>
-          {error ? <p className="error">{error}</p> : null}
+          {error ? (
+            <div className="error">
+              <p>{error}</p>
+              <Link href="/" className="ghost back-link" data-testid="go-back">Go back</Link>
+            </div>
+          ) : null}
+          <Link href="/" className="games-link">Games</Link>
         </section>
       </main>
     )
@@ -125,7 +146,7 @@ export function CoachScreen({ code }: { code: string }) {
 
   const screen = present(state, playerId)
   return (
-    <main className="wrap">
+    <main className="wrap table">
       <header className="top">
         <div className="brand">
           <Mark />
@@ -134,7 +155,10 @@ export function CoachScreen({ code }: { code: string }) {
             <p>{screen.hud.scenario}</p>
           </div>
         </div>
-        <div className="code-pill" data-testid="room-code">{screen.code}</div>
+        <div className="top-actions">
+          <Link href="/" className="games-link">Games</Link>
+          <div className="code-pill" data-testid="room-code">{screen.code}</div>
+        </div>
       </header>
       <div className="play">
         <aside className="hud">
@@ -148,15 +172,16 @@ export function CoachScreen({ code }: { code: string }) {
           ))}
         </aside>
         <section className="stage">
+          <div className="stage-scroll">
           <article className="say">
             <p className="kicker">{screen.kicker}</p>
             <h2 data-testid="title">{screen.title}</h2>
             <p className="aloud" data-testid="say">{screen.say}</p>
           </article>
-          {screen.lesson ? <p className="lesson">{screen.lesson}</p> : null}
+          {screen.lesson ? (
+            <p className="lesson">{screen.over ? <span className="kicker">What we learned</span> : null}{screen.lesson}</p>
+          ) : null}
           {screen.note ? <p className="note">{screen.note}</p> : null}
-          {screen.wait ? <p className="wait" data-testid="wait">{screen.wait}</p> : null}
-          {error ? <p className="error">{error}</p> : null}
           {screen.roster ? (
             <div className="roster">
               {screen.roster.map((card) => (
@@ -184,30 +209,46 @@ export function CoachScreen({ code }: { code: string }) {
               ))}
             </div>
           ) : null}
-          {screen.choices.length > 0 ? (
-            <div className="choices">
-              {screen.choices.map((choice) => (
-                <button
-                  key={choice.id}
-                  type="button"
-                  data-testid={`choice-${choice.id}`}
-                  disabled={busy}
-                  onClick={() => void send(choice.action)}
-                >
-                  <strong>{choice.label}</strong>
-                  {choice.hint ? <span>{choice.hint}</span> : null}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {screen.pad ? <Pad screen={screen} disabled={busy} onPick={(value) => void send(padAction(screen, playerId, value))} /> : null}
-          {screen.undo ? (
-            <button className="ghost" type="button" disabled={busy} onClick={() => void send(screen.undo as Action)}>
-              Undo last tap
-            </button>
-          ) : null}
           {screen.over?.winner ? <p className="lesson">Clear the fallen minis. The cards stay marked until you wipe them.</p> : null}
           <TableLook screen={screen} playerName={state.players.find((player) => player.id === playerId)?.name ?? name} />
+          </div>
+          <div className={`dock${screen.active ? " live" : ""}`} data-testid="dock">
+            <p className={`cue${screen.active ? " yours" : ""}`} data-testid="cue">
+              <i />
+              {busy ? "Sending that tap…" : screen.active ? "Your turn. Tap a button." : screen.wait ? screen.wait : screen.over ? "The fight is over." : "Watch the table."}
+            </p>
+            {error ? (
+              <div className="error">
+                <p>{error}</p>
+                <Link href="/" className="ghost back-link" data-testid="go-back">Go back</Link>
+              </div>
+            ) : null}
+            {screen.choices.length > 0 ? (
+              <div className="choices">
+                {screen.choices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    data-testid={`choice-${choice.id}`}
+                    disabled={busy}
+                    onClick={() => void send(choice.action)}
+                  >
+                    <strong>{choice.label}</strong>
+                    {choice.hint ? <span>{choice.hint}</span> : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {screen.pad ? <Pad screen={screen} disabled={busy} onPick={(value) => void send(padAction(screen, playerId, value))} /> : null}
+            {screen.undo ? (
+              <button className="ghost" type="button" disabled={busy} onClick={() => void send(screen.undo as Action)}>
+                Undo last tap
+              </button>
+            ) : null}
+            {screen.over ? (
+              <Link href="/" className="primary back-link">All games</Link>
+            ) : null}
+          </div>
         </section>
       </div>
     </main>

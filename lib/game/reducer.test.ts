@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { attackPreview, adjustedMove, defenderTmm } from "./math"
 import { applyAction, claimSeat, createGame, currentCard, rulesOf } from "./flow"
+import { present } from "./present"
 import type { Action, GameState, Mech } from "./types"
 import { RuleError } from "./types"
 
@@ -174,8 +175,12 @@ describe("first steps play", () => {
     state = act(state, { type: "kind", playerId: "kid", kind: "hold" })
     assert.equal(state.phase, "over")
     assert.equal(state.winnerId, undefined)
-    assert.match(state.winReason ?? "", /Nobody lost/)
-    assert.match(state.winReason ?? "", /0 armor and 4 structure/)
+    const recap = present(state, "host")
+    assert.equal(recap.kicker, "What happened")
+    assert.match(recap.say, /lasted 2 turns/)
+    assert.match(recap.say, /Nobody lost/)
+    assert.match(recap.say, /0 armor and 4 structure/)
+    assert.match(recap.lesson ?? "", /8R/)
   })
 
   it("ignores a hit that would destroy a mech and both pull back", () => {

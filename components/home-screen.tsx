@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { GROUP_LABEL, SCENARIOS } from "@/lib/game/scenarios"
 import type { Faction, Group } from "@/lib/game/types"
 import { loadPlayerId, savePlayerId } from "@/lib/ids"
+import { loadRecent, saveRecent, type RecentGame } from "@/lib/recent"
 import { Mark } from "./mark"
 
 const GROUPS: Group[] = ["teaching", "real", "graduation"]
@@ -83,6 +85,7 @@ export function HomeScreen() {
       <p className="lede">
         The first three games teach move, shoot, and bubbles. The later games teach the real quick-start turn from the box: range, movement, heat, crits, and punches. Keep the cards, the dice, and the tape on the table. For crits, keep the tables card out too.
       </p>
+      <ContinueGames />
       <div className="home-grid" style={{ marginTop: "1rem" }}>
         <section className="panel">
           <h2>Start a game</h2>
@@ -145,5 +148,55 @@ export function HomeScreen() {
       </div>
       {error ? <p className="error" style={{ marginTop: "1rem" }}>{error}</p> : null}
     </main>
+  )
+}
+
+function ContinueGames() {
+  const [games, setGames] = useState<RecentGame[]>([])
+
+  useEffect(() => {
+    const saved = loadRecent()
+    let stop = false
+    async function refresh() {
+      const live: RecentGame[] = []
+      for (const game of saved) {
+        const response = await fetch(`/api/rooms/${game.code}`, { cache: "no-store" })
+        if (response.status === 404) continue
+        if (!response.ok) {
+          live.push(game)
+          continue
+        }
+        const data = await response.json()
+        const scenario = SCENARIOS.find((item) => item.id === data.state?.scenarioId)
+        live.push({
+          code: game.code,
+          scenarioId: data.state?.scenarioId ?? game.scenarioId,
+          scenario: scenario?.title ?? game.scenario,
+          turn: data.state?.phase === "over" ? "Finished" : data.state?.turn > 0 ? `Turn ${data.state.turn}` : "Setup",
+        })
+      }
+      if (stop) return
+      saveRecent(live)
+      setGames(live)
+    }
+    void refresh()
+    return () => {
+      stop = true
+    }
+  }, [])
+
+  if (games.length === 0) return null
+  return (
+    <section className="panel continue" data-testid="continue">
+      <h2>Continue</h2>
+      <div className="scenario-group">
+        {games.map((game) => (
+          <Link key={game.code} href={`/game/${game.code}`} className="scenario">
+            <strong>{game.scenario}</strong>
+            <small>{game.turn} · {game.code}</small>
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }

@@ -26,9 +26,10 @@ export function present(state: GameState, playerId: string): Screen {
 
   if (state.phase === "over") {
     const winner = state.players.find((player) => player.id === state.winnerId)
-    screen.kicker = winner ? "Game over" : "Both pull back"
+    screen.kicker = "What happened"
     screen.title = winner ? `${winner.name} wins` : "Nobody lost"
-    screen.say = state.winReason ?? "The battle is finished."
+    screen.say = happened(state)
+    screen.lesson = scenario.lesson
     screen.over = { winner: winner?.name ?? "", reason: state.winReason ?? "" }
     return screen
   }
@@ -751,6 +752,25 @@ function bothConfirm(state: GameState, screen: Screen, me: Player, id: string, l
   screen.active = true
   screen.choices = [{ id, label, action: { type: "confirm", playerId: me.id } }]
   return screen
+}
+
+function happened(state: GameState): string {
+  const scenario = mustScenario(state.scenarioId)
+  const length =
+    state.turn > 0
+      ? `${scenario.title} lasted ${state.turn} turn${state.turn === 1 ? "" : "s"}.`
+      : `${scenario.title} ended during setup.`
+  const mechs = state.mechs
+    .map((mech) => {
+      const owner = state.players.find((player) => player.id === mech.ownerId)?.name ?? "A pilot"
+      if (mech.knockedOut) return `${owner}'s ${mech.name} was knocked out.`
+      if (mech.armorLeft != null) {
+        return `${owner}'s ${mech.name} still has ${mech.armorLeft} armor and ${mech.structureLeft ?? 0} structure.`
+      }
+      return `${owner}'s ${mech.name} stayed on the table.`
+    })
+    .join(" ")
+  return `${length} ${state.winReason ?? "The battle is finished."} ${mechs}`
 }
 
 function shotChoiceSay(ownerName: string, mechName: string, rules: Rules): string {
