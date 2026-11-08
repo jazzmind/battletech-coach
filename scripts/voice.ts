@@ -22,8 +22,12 @@ function readManifest(): Manifest {
 }
 
 function saveManifest(manifest: Manifest) {
+  const current = readManifest()
   const lines = Object.fromEntries(Object.entries(manifest.lines).sort(([a], [b]) => a.localeCompare(b)))
-  writeFileSync(MANIFEST_FILE, `${JSON.stringify({ lines, clips: readManifest().clips }, null, 2)}\n`)
+  writeFileSync(
+    MANIFEST_FILE,
+    `${JSON.stringify({ lines, clips: current.clips, lineClips: manifest.lineClips ?? current.lineClips }, null, 2)}\n`,
+  )
 }
 
 async function main() {

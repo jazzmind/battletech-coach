@@ -8,6 +8,7 @@ export type AudioSettings = { story: boolean; steps: boolean }
 export function autoLines(screen: Screen, audio: AudioSettings, view: "watch" | "read" = "read"): VoiceLine[] {
   const voice = screen.voice
   if (view === "watch") {
+    if (voice?.mission || voice?.interlude || voice?.ending) return []
     return audio.steps && screen.say ? [{ who: "coach", say: screen.say, key: "" }] : []
   }
   if (voice?.mission) return audio.story ? voice.mission : []

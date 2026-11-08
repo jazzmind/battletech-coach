@@ -951,6 +951,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
 .theater { display: grid; gap: 0.45rem; margin: 0 0 0.8rem; }
 .theater-frame { position: relative; aspect-ratio: 4 / 5; height: min(52vh, 30rem); max-width: 100%; margin: 0 auto; background: #000; border: 3px solid var(--amber); overflow: hidden; }
 .theater-frame img, .theater-frame video { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; display: block; }
+.theater-frame video.theater-hold { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .theater-frame.speaking img { animation: theater-zoom var(--dur, 4s) linear forwards; }
 .theater-radio { height: 100%; display: grid; place-items: center; align-content: center; gap: 0.6rem; background: radial-gradient(circle at 12% -10%, rgba(226, 161, 26, 0.16), transparent 32%), repeating-linear-gradient(0deg, transparent, transparent 46px, var(--line) 47px), repeating-linear-gradient(90deg, transparent, transparent 46px, var(--line) 47px), var(--ink); }
 .theater-radio .mark { width: 96px; height: 96px; opacity: 0.3; }

@@ -2,7 +2,7 @@ import { MISSIONS } from "./missions"
 import { rules } from "./rules"
 import { falcon, garrison, lyran, narrator, tag, type Line } from "./script"
 import type { Faction, Group, Rules } from "./types"
-import type { Layout } from "../scenario-gen/layout"
+import { fixedLayout, pair, type Layout } from "../scenario-gen/layout"
 
 export const INNER_SPHERE = [
   "Wasp",
@@ -69,6 +69,48 @@ export function speak(text: string, innerSphere: string, clan: string): string {
 }
 
 const named = (who: "host" | "guest", say: string): TerrainStep => ({ who, say })
+
+const BEACON_TOKEN = { id: "beacon", label: "the beacon", kind: "hold" as const, x: 24, y: 18 }
+
+// 3 by 4 feet. The two large buildings sit in the middle, a hand's width apart.
+const TOWN = fixedLayout(
+  "town",
+  [
+    { kind: "largeBuilding", x: 14, y: 15, role: "center" },
+    { kind: "largeBuilding", x: 27, y: 16, role: "center" },
+    ...pair("smallBuilding", 6, 8),
+    ...pair("smallBuilding", 30, 8),
+    ...pair("tree", 4, 14),
+    ...pair("tree", 16, 9),
+    ...pair("tree", 36, 12),
+  ],
+  [],
+)
+
+const BEACON_TOWN = fixedLayout(
+  "beacon-town",
+  [
+    { kind: "largeBuilding", x: 10, y: 12, role: "center" },
+    { kind: "largeBuilding", x: 32, y: 12, role: "center" },
+    ...pair("smallBuilding", 6, 8),
+    ...pair("tree", 8, 20),
+    ...pair("tree", 18, 8),
+  ],
+  [BEACON_TOKEN],
+)
+
+const ORCHARD = fixedLayout(
+  "orchard",
+  [
+    { kind: "largeBuilding", x: 14, y: 15, role: "center" },
+    { kind: "largeBuilding", x: 27, y: 16, role: "center" },
+    ...pair("tree", 6, 10),
+    ...pair("tree", 20, 9),
+  ],
+  [],
+)
+
+const WHOLE_TOWN = fixedLayout("whole-town", TOWN.pieces.map((piece) => ({ kind: piece.kind, x: piece.x, y: piece.y, role: piece.role })), [BEACON_TOKEN])
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -199,6 +241,7 @@ export const SCENARIOS: Scenario[] = [
       named("host", "{name}, take three trees and put them on your half. Do not pile them on the buildings."),
       named("guest", "{name}, take three trees and put them on your half."),
     ],
+    layout: TOWN,
     beaconGoal: 2,
   },
   {
@@ -279,6 +322,7 @@ export const SCENARIOS: Scenario[] = [
       named("guest", "{name}, take two trees and put them on your half."),
       named("host", "{name}, put one punchboard token in the exact center. That is the beacon."),
     ],
+    layout: BEACON_TOWN,
     beaconGoal: 2,
   },
   {
@@ -506,6 +550,7 @@ export const SCENARIOS: Scenario[] = [
       named("host", "{name}, take two trees and put them on your half."),
       named("guest", "{name}, take two trees and put them on your half."),
     ],
+    layout: ORCHARD,
     beaconGoal: 2,
   },
   {
@@ -765,6 +810,7 @@ export const SCENARIOS: Scenario[] = [
       named("guest", "{name}, take three trees and put them on your half."),
       named("host", "{name}, put one punchboard token in the exact center. That is the beacon."),
     ],
+    layout: WHOLE_TOWN,
     beaconGoal: 2,
   },
 ]

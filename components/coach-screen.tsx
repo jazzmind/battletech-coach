@@ -33,14 +33,14 @@ export function CoachScreen({ code }: { code: string }) {
   const [mapOpen, setMapOpen] = useState(false)
   const [mechsOpen, setMechsOpen] = useState(false)
   const [cameraAsk, setCameraAsk] = useState(0)
-  const [audio, setAudio] = useState<AudioSettings>({ story: false, steps: false })
+  const [audio, setAudio] = useState<AudioSettings>({ story: true, steps: false })
   const [view, setView] = useState<StoryView>("watch")
 
   useEffect(() => {
     setPlayerId(loadPlayerId())
     const saved = localStorage.getItem("mech-coach-name")
     if (saved) setName(saved)
-    setAudio({ story: localStorage.getItem(STORY_KEY) === "1", steps: localStorage.getItem(STEPS_KEY) === "1" })
+    setAudio({ story: localStorage.getItem(STORY_KEY) !== "0", steps: localStorage.getItem(STEPS_KEY) === "1" })
     setView(loadStoryView())
   }, [])
 
@@ -181,7 +181,9 @@ export function CoachScreen({ code }: { code: string }) {
   const screen = present(state, playerId)
   const showDock = !screen.over && (screen.choices.length > 0 || Boolean(screen.pad) || Boolean(screen.wait) || Boolean(error))
   const playerName = state.players.find((player) => player.id === playerId)?.name ?? name
-  const storyLines = screen.voice?.mission ?? screen.voice?.interlude ?? screen.voice?.ending
+  const storyLines = screen.voice?.mission
+    ? [...screen.voice.mission, ...(screen.voice.lesson ?? [])]
+    : (screen.voice?.interlude ?? screen.voice?.ending)
   const hasStory = Boolean(storyLines && storyLines.length > 0)
   const watching = view === "watch" && hasStory
   const storyNames = {

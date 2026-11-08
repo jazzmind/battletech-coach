@@ -19,7 +19,7 @@ import { CATALOG, type Scenario } from "../lib/game/scenarios"
 import { spokenText } from "../lib/game/script"
 import type { Faction } from "../lib/game/types"
 import { CAST } from "../lib/voice/cast"
-import { clipId } from "../lib/voice/key"
+import { clipId, voiceKey } from "../lib/voice/key"
 import { everyLine, ordersLines, voicedScenarios } from "../lib/voice/lines"
 import type { Caption, Manifest } from "../lib/voice/manifest"
 import { ROOT, download, heygen, loadEnv, sleep } from "./heygen"
@@ -95,7 +95,7 @@ async function blob(name: string, body: Buffer, contentType: string): Promise<st
 }
 
 const portraits = new Map<string, string>()
-async function portraitUrl(who: "garrison" | "galaxy" | "lyran" | "falcon"): Promise<string> {
+async function portraitUrl(who: LineSpeaker): Promise<string> {
   const cached = portraits.get(who)
   if (cached) return cached
   const url = await blob(`pilots/${who}.jpg`, readFileSync(path.join(ROOT, "public/art/pilots", `${who}.jpg`)), "image/jpeg")
@@ -218,17 +218,32 @@ async function render(job: Job) {
   }
 }
 
-const LINE_MOTION: Record<"lyran" | "falcon", string> = {
+const LINE_MOTION = {
   lyran: "A Lyran MechWarrior speaking on a cockpit radio. Focused, small head movement, no hand gestures.",
   falcon: "A proud Clan Jade Falcon warrior issuing a formal challenge over the radio. Chin up, steady gaze, no hand gestures.",
-}
+  garrison: "A Lyran garrison commander giving orders over the radio. Steady, serious, no hand gestures.",
+  galaxy: "A Clan Jade Falcon officer giving orders over the radio. Formal, chin up, no hand gestures.",
+} as const
 
-type LineJob = { key: string; who: "lyran" | "falcon"; text: string; file: string; seconds: number }
+type LineSpeaker = keyof typeof LINE_MOTION
+
+type LineJob = { key: string; who: LineSpeaker; text: string; file: string; seconds: number }
+
+function coveredByBriefing(key: string): boolean {
+  for (const scenario of voicedScenarios()) {
+    for (const faction of ["innerSphere", "clan"] as const) {
+      const orders = ordersLines(scenario, faction)[0]
+      if (orders && voiceKey(orders.who, spokenText(orders)) === key) return true
+    }
+  }
+  return false
+}
 
 function lineJobs(manifest: Manifest): LineJob[] {
   const jobs: LineJob[] = []
   for (const item of everyLine(voicedScenarios())) {
-    if (item.line.who !== "lyran" && item.line.who !== "falcon") continue
+    if (item.line.who !== "lyran" && item.line.who !== "falcon" && item.line.who !== "garrison" && item.line.who !== "galaxy") continue
+    if (coveredByBriefing(item.key)) continue
     const recording = manifest.lines[item.key]
     if (!recording) continue
     jobs.push({ key: item.key, who: item.line.who, text: item.spoken, file: recording.file, seconds: recording.seconds })

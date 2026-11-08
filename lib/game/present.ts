@@ -100,7 +100,7 @@ function finish(state: GameState, playerId: string, screen: Screen): Screen {
     screen.ending = speak(toText(scenario.ending[outcome]), names.innerSphere, names.clan)
     screen.voice = {
       ending: toVoice(endingLines(scenario, outcome), names),
-      lesson: toVoice(lessonLines(scenario), names),
+      lesson: toVoice(lessonLines(scenario, winner?.faction ?? "innerSphere"), names),
       scene: scenario.art?.src,
     }
   }
@@ -177,7 +177,7 @@ function presentBriefing(state: GameState, screen: Screen, me: Player): Screen {
   const span = ordersSpan(scenario, me.faction)
   screen.voice = {
     mission: toVoice(briefingLines(scenario, me.faction), names),
-    lesson: toVoice(lessonLines(scenario), names),
+    lesson: toVoice(lessonLines(scenario, me.faction), names),
     clip: clipId(scenario.id, me.faction),
     clipAt: span.clipAt,
     clipSpan: span.clipSpan,

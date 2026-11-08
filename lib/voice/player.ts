@@ -42,23 +42,31 @@ export function unlock() {
   window.speechSynthesis.speak(blank)
 }
 
-export async function play(id: string, lines: readonly VoiceLine[]): Promise<void> {
+export async function play(id: string, lines: readonly VoiceLine[]): Promise<boolean> {
   stop()
   const mine = run
   playing = id
   emit()
   for (const line of lines) {
-    if (run !== mine) return
+    if (run !== mine) return false
     speaking = line.who
     emit()
     const recording = recordingFor(line.key)
     const played = recording ? await playFile(recording.file, mine) : false
-    if (!played && run === mine) await speakLine(line)
+    const spoke = !played && run === mine ? await speakLine(line) : false
+    if (run !== mine) return false
+    if (!played && !spoke) {
+      playing = null
+      speaking = null
+      emit()
+      return false
+    }
   }
-  if (run !== mine) return
+  if (run !== mine) return false
   playing = null
   speaking = null
   emit()
+  return true
 }
 
 function playFile(file: string, mine: number): Promise<boolean> {
@@ -71,16 +79,16 @@ function playFile(file: string, mine: number): Promise<boolean> {
     const check = setInterval(() => {
       if (run === mine) return
       clearInterval(check)
-      resolve(true)
+      resolve(false)
     }, 200)
     element.addEventListener("ended", () => clearInterval(check))
     element.addEventListener("error", () => clearInterval(check))
   })
 }
 
-function speakLine(line: VoiceLine): Promise<void> {
+function speakLine(line: VoiceLine): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve()
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve(false)
     const utterance = new SpeechSynthesisUtterance(line.say)
     const cast = CAST[line.who].browser
     const voice = pickVoice(line.who)
@@ -92,8 +100,8 @@ function speakLine(line: VoiceLine): Promise<void> {
     }
     utterance.pitch = cast.pitch
     utterance.rate = cast.rate
-    utterance.onend = () => resolve()
-    utterance.onerror = () => resolve()
+    utterance.onend = () => resolve(true)
+    utterance.onerror = () => resolve(false)
     window.speechSynthesis.speak(utterance)
   })
 }

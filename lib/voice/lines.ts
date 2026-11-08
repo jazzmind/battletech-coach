@@ -26,8 +26,9 @@ export function ordersLines(scenario: Scenario, faction: Faction): Line[] {
   return [command(side.orders), ...side.plan.map((item) => command(item))]
 }
 
-export function lessonLines(scenario: Scenario): Line[] {
-  return [narrator(scenario.lesson)]
+export function lessonLines(scenario: Scenario, faction: Faction = "innerSphere"): Line[] {
+  const command = faction === "innerSphere" ? garrison : galaxy
+  return [command(scenario.lesson)]
 }
 
 export function endingLines(scenario: Scenario, outcome: Faction | "draw"): Line[] {
@@ -62,7 +63,8 @@ export function everyLine(scenarios: readonly Scenario[]): { key: string; line: 
     const groups: Line[][] = [
       briefingLines(scenario, "innerSphere"),
       briefingLines(scenario, "clan"),
-      lessonLines(scenario),
+      lessonLines(scenario, "innerSphere"),
+      lessonLines(scenario, "clan"),
       endingLines(scenario, "innerSphere"),
       endingLines(scenario, "clan"),
       endingLines(scenario, "draw"),

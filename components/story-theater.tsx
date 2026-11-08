@@ -42,6 +42,7 @@ export function StoryTheater({
   const [status, setStatus] = useState<Status>("idle")
   const videoRef = useRef<HTMLVideoElement>(null)
   const run = useRef(0)
+  const started = useRef(false)
   const spot = lineAt(segments, Math.min(lineIndex, Math.max(0, total - 1)))
   const line = currentLine(spot)
   const media = spot ? mediaFor(spot.segment) : undefined
@@ -55,12 +56,15 @@ export function StoryTheater({
   }, [active])
 
   useEffect(() => {
-    if (!autoplay || !active) return
-    const timer = window.setTimeout(() => start(0), 0)
+    if (!autoplay || !active || started.current) return
+    const timer = window.setTimeout(() => {
+      started.current = true
+      start(0)
+    }, 0)
     return () => window.clearTimeout(timer)
-    // Start once per story. The parent remounts this component when the story changes.
+    // Start once, after the saved audio setting has loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoplay, active])
 
   function start(index: number) {
     const next = lineAt(segments, index)
@@ -75,33 +79,45 @@ export function StoryTheater({
     if (next.segment.kind === "still") {
       videoRef.current?.pause()
       stop()
-      void play(`theater-${mine}`, [next.segment.line]).then(() => {
+      void play(`theater-${mine}`, [next.segment.line]).then((heard) => {
         if (run.current !== mine) return
+        if (!heard) {
+          setStatus("idle")
+          return
+        }
         start(index + 1)
       })
       return
     }
     stop()
-    const video = videoRef.current
-    if (!video) return
-    const clipMedia = mediaFor(next.segment)
-    const caption = clipMedia?.captions[next.local]
-    const go = () => {
-      video.currentTime = caption?.start ?? 0
-      void video.play().catch(() => {
-        if (run.current === mine) setStatus("idle")
-      })
-    }
-    if (video.dataset.clip !== next.segment.id) {
-      video.dataset.clip = next.segment.id
-      video.src = clipMedia?.url ?? ""
-      video.poster = clipMedia?.poster ?? ""
-      video.onloadeddata = () => {
-        if (run.current === mine) go()
+    const segment = next.segment
+    if (segment.kind !== "video") return
+    const begin = (video: HTMLVideoElement) => {
+      const clipMedia = mediaFor(segment)
+      const caption = clipMedia?.captions[next.local]
+      const go = () => {
+        if (run.current !== mine) return
+        video.currentTime = caption?.start ?? 0
+        void video.play().catch(() => {
+          if (run.current === mine) setStatus("idle")
+        })
       }
-      return
+      if (video.dataset.clip !== segment.id) {
+        video.dataset.clip = segment.id
+        video.src = clipMedia?.url ?? ""
+        video.poster = clipMedia?.poster ?? ""
+        video.onloadeddata = go
+        return
+      }
+      go()
     }
-    go()
+    const video = videoRef.current
+    if (video) begin(video)
+    else requestAnimationFrame(() => {
+      if (run.current !== mine) return
+      const ready = videoRef.current
+      if (ready) begin(ready)
+    })
   }
 
   function pause() {
@@ -137,15 +153,18 @@ export function StoryTheater({
   return (
     <div className="theater" data-testid="story-theater">
       <div className={`theater-frame${status === "playing" && spot?.segment.kind === "still" ? " speaking" : ""}`}>
-        {showVideo ? (
-          <video
-            ref={videoRef}
-            playsInline
-            poster={media?.poster}
-            onTimeUpdate={onTime}
-            onEnded={() => start((spot?.start ?? 0) + (spot?.segment.kind === "video" ? spot.segment.lines.length : 1))}
-          />
-        ) : image ? (
+        <video
+          ref={videoRef}
+          className={showVideo ? "theater-motion" : "theater-hold"}
+          playsInline
+          poster={spot?.segment.kind === "video" ? media?.poster : undefined}
+          onTimeUpdate={onTime}
+          onEnded={() => {
+            if (!spot || spot.segment.kind !== "video") return
+            start(spot.start + spot.segment.lines.length)
+          }}
+        />
+        {showVideo ? null : image ? (
           <img
             src={image}
             alt=""
