@@ -1147,7 +1147,7 @@ function nextMoveQuestion(state: GameState, from: "placed" | "terrain" | "water"
   const mech = activeMech(state)
   const jumping = mech.moveMode === "jump" || mech.moveMode === "dfa"
   const moved = mech.moveMode !== "stand" && mech.moveMode != null
-  if (from === "placed" && rules.terrainCost && moved && !jumping) {
+  if (from === "placed" && rules.terrainCost && moved && !jumping && hasMovementTerrain(state)) {
     state.step = "terrain"
     return
   }
@@ -1155,7 +1155,7 @@ function nextMoveQuestion(state: GameState, from: "placed" | "terrain" | "water"
     state.step = "water"
     return
   }
-  if (from !== "cover" && rules.teachingCover) {
+  if (from !== "cover" && rules.teachingCover && hasTreeOrBuilding(state)) {
     state.step = "cover"
     return
   }
@@ -1246,15 +1246,33 @@ function afterArc(state: GameState) {
   askShotExtras(state)
 }
 
+function hasMovementTerrain(state: GameState): boolean {
+  return (state.layout?.pieces ?? []).some((piece) => piece.kind === "tree" || piece.kind === "woods" || piece.kind === "hill")
+}
+
+function hasTree(state: GameState): boolean {
+  return (state.layout?.pieces ?? []).some((piece) => piece.kind === "tree" || piece.kind === "woods")
+}
+
+function hasTreeOrBuilding(state: GameState): boolean {
+  return (state.layout?.pieces ?? []).some(
+    (piece) => piece.kind === "tree" || piece.kind === "woods" || piece.kind === "largeBuilding" || piece.kind === "smallBuilding" || piece.kind === "wall",
+  )
+}
+
+function hasBlockingPiece(state: GameState): boolean {
+  return (state.layout?.pieces ?? []).some((piece) => piece.blocksLos)
+}
+
 function askShotExtras(state: GameState) {
   const rules = rulesOf(state)
   const combat = state.combat
   if (!combat) return
-  if (rules.partialCover && !combat.askedPartial) {
+  if (rules.partialCover && !combat.askedPartial && hasBlockingPiece(state)) {
     state.step = "partial"
     return
   }
-  if (rules.woods && !combat.askedWoods) {
+  if (rules.woods && !combat.askedWoods && hasTree(state)) {
     state.step = "woods"
     return
   }

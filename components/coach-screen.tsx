@@ -32,6 +32,7 @@ export function CoachScreen({ code }: { code: string }) {
   const [poolFor, setPoolFor] = useState<string | null>(null)
   const [mapOpen, setMapOpen] = useState(false)
   const [mechsOpen, setMechsOpen] = useState(false)
+  const [portrait, setPortrait] = useState<{ name: string; art: string } | null>(null)
   const [cameraAsk, setCameraAsk] = useState(0)
   const [audio, setAudio] = useState<AudioSettings>({ story: true, steps: false })
   const [view, setView] = useState<StoryView>("watch")
@@ -233,6 +234,11 @@ export function CoachScreen({ code }: { code: string }) {
           <div className="hud-body">
           {screen.hud.rows.map((row) => (
             <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
+              {row.art ? (
+                <button type="button" className="mech-thumb" aria-label={`${row.name} portrait`} onClick={() => setPortrait({ name: row.name, art: row.art as string })}>
+                  <img src={row.art} alt="" />
+                </button>
+              ) : null}
               <span className="who">{row.name}</span>
               <span className="detail">{row.detail}</span>
             </div>
@@ -293,6 +299,12 @@ export function CoachScreen({ code }: { code: string }) {
                 </ol>
               )}
             </section>
+          ) : null}
+          {screen.review && screen.lesson ? (
+            <p className="lesson">
+              <span className="kicker">Still in force</span>
+              {screen.review}
+            </p>
           ) : null}
           {screen.lesson ? (
             <p className="lesson">
@@ -435,10 +447,18 @@ export function CoachScreen({ code }: { code: string }) {
       <Modal open={mechsOpen} title="Forces on the field" onClose={() => setMechsOpen(false)}>
         {screen.hud.rows.map((row) => (
           <div key={row.id} className={`row${row.mine ? " mine" : ""}${row.out ? " out" : ""}`}>
+            {row.art ? (
+              <button type="button" className="mech-thumb" aria-label={`${row.name} portrait`} onClick={() => setPortrait({ name: row.name, art: row.art as string })}>
+                <img src={row.art} alt="" />
+              </button>
+            ) : null}
             <span className="who">{row.name}</span>
             <span className="detail">{row.detail}</span>
           </div>
         ))}
+      </Modal>
+      <Modal open={portrait != null} title={portrait?.name ?? "Mech"} onClose={() => setPortrait(null)}>
+        {portrait ? <img className="mech-full" src={portrait.art} alt={portrait.name} /> : null}
       </Modal>
     </main>
   )

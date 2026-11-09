@@ -152,7 +152,7 @@ export function StoryTheater({
 
   return (
     <div className="theater" data-testid="story-theater">
-      <div className={`theater-frame${status === "playing" && spot?.segment.kind === "still" ? " speaking" : ""}`}>
+      <div className={`theater-frame${spot?.segment.kind === "still" && spot.segment.wide && !showVideo ? " scene" : ""}${status === "playing" && spot?.segment.kind === "still" ? " speaking" : ""}`}>
         <video
           ref={videoRef}
           className={showVideo ? "theater-motion" : "theater-hold"}

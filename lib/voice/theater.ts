@@ -3,7 +3,7 @@ import { CAST } from "./cast"
 
 export type Segment =
   | { kind: "video"; id: string; lines: VoiceLine[] }
-  | { kind: "still"; line: VoiceLine; image: string | null }
+  | { kind: "still"; line: VoiceLine; image: string | null; wide: boolean }
 
 export function buildSegments(input: {
   lines: VoiceLine[]
@@ -32,7 +32,8 @@ export function buildSegments(input: {
       index += lines.length
       continue
     }
-    segments.push({ kind: "still", line, image: stillImage(line.who, input.scene, portraits) })
+    const image = stillImage(line.who, input.scene, portraits)
+    segments.push({ kind: "still", line, image, wide: line.who === "narrator" && image != null && image === input.scene })
     index += 1
   }
   return segments

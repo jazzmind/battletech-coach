@@ -3,6 +3,7 @@ import { rules } from "./rules"
 import { falcon, garrison, lyran, narrator, tag, type Line } from "./script"
 import type { Faction, Group, Rules } from "./types"
 import { fixedLayout, pair, type Layout } from "../scenario-gen/layout"
+import { stepsFor } from "../scenario-gen/scenario"
 
 export const INNER_SPHERE = [
   "Wasp",
@@ -46,6 +47,7 @@ export type Scenario = {
   sides: Record<Faction, SideBrief>
   ending: Record<Faction | "draw", Line[]>
   lesson: string
+  review?: string
   table: string
   rules: Rules
   skill: number
@@ -111,6 +113,17 @@ const ORCHARD = fixedLayout(
 )
 
 const WHOLE_TOWN = fixedLayout("whole-town", TOWN.pieces.map((piece) => ({ kind: piece.kind, x: piece.x, y: piece.y, role: piece.role })), [BEACON_TOKEN])
+
+const JUMP_WALL = fixedLayout(
+  "jump-wall",
+  [
+    { kind: "wall", x: 21, y: 17, role: "center" },
+    { kind: "largeBuilding", x: 8, y: 12, role: "host" },
+    { kind: "tree", x: 12, y: 22, role: "host" },
+    { kind: "tree", x: 34, y: 20, role: "guest" },
+  ],
+  [],
+)
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -375,8 +388,9 @@ export const SCENARIOS: Scenario[] = [
     },
     lesson:
       "From here on, the number to beat uses the real range bands. Short, up to 6 inches, adds nothing. Medium, past 6 and up to 24, adds 2. Long, past 24 and up to 42, adds 4. Past 42 is too far. Damage still comes from that box on the card.",
+    review: "A mech that shoots is still Hot. That next shot needs one more.",
     table: "Clear a square about 4 feet on each side, so a long shot can exist. Sit on opposite edges.",
-    rules: rules({ realRange: true }),
+    rules: rules({ realRange: true, teachingCover: true, teachingJump: true, teachingHeat: true }),
     skill: 4,
     forces: { innerSphere: ["AS7-S"], clan: ["WHK-C"] },
     extraPieces: ["both dice", "a tape measure"],
@@ -429,7 +443,14 @@ export const SCENARIOS: Scenario[] = [
     lesson:
       "TMM is the target movement modifier on the card. A mech that walked or sprinted adds its TMM to the number you need. A mech that moved less than 1 inch stood still: its TMM is 0, and its own shot is one easier.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
-    rules: rules({ realRange: true, tmm: true, standstill: true }),
+    rules: rules({
+      realRange: true,
+      tmm: true,
+      standstill: true,
+      teachingCover: true,
+      teachingJump: true,
+      teachingHeat: true,
+    }),
     skill: 4,
     forces: { innerSphere: ["WSP-3W"], clan: ["FM-D"] },
     extraPieces: ["both dice", "a tape measure"],
@@ -437,11 +458,80 @@ export const SCENARIOS: Scenario[] = [
     beaconGoal: 2,
   },
   {
+    id: "trees-and-walls",
+    group: "real",
+    title: "Trees and Walls",
+    summary: "Movement cost, woods, and partial cover.",
+    chapter: "Chapter 6: The Orchard",
+    story: [
+      garrison("Garrison Command: the Mad Cat from the duel is back, in the orchards outside town."),
+      narrator("Lieutenant {is} takes the Warhammer in after it. Clan channel:"),
+      falcon(
+        "\"Star Commander {clan}. We finish what we began, Lieutenant.\"",
+        "Star Commander here. We finish what we began, Lieutenant.",
+      ),
+      narrator(
+        "Both pilots have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
+      ),
+    ],
+    goal: "Knock out every enemy mech.",
+    sides: {
+      innerSphere: {
+        unit: LYRAN,
+        orders: "Garrison Command: Use the orchard. Make the Mad Cat pay for every inch.",
+        plan: [
+          "Clear ground costs 1 inch of move per inch you walk. Trees cost 2.",
+          "If two-thirds of the enemy is behind a building, the shot is one harder.",
+          "Trees in the way, or a target standing in trees, are also one harder.",
+        ],
+      },
+      clan: {
+        unit: FALCON,
+        orders: "Galaxy Command: Cross the orchard without wasting your move in the trees.",
+        plan: [
+          "Walking through trees costs 2 inches for every inch you travel.",
+          "Hide two-thirds of the Timber Wolf behind a building when you can.",
+          "These mechs do not jump, so walk the open lane and pay the tree cost.",
+        ],
+      },
+    },
+    ending: {
+      innerSphere: [tag("Lieutenant {is}:"), lyran("\"Mad Cat down in the trees.\""), narrator("The orchard stays Lyran.")],
+      clan: [tag("Star Commander {clan}:"), falcon("\"The Warhammer lies in the orchard. This ground is ours.\"")],
+      draw: [narrator("Both mechs fall among the trees. The orchard goes quiet.")],
+    },
+    lesson:
+      "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover.",
+    review: "A mech that moved still adds its TMM. Standing still makes its own shot one easier.",
+    table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
+    rules: rules({
+      realRange: true,
+      tmm: true,
+      standstill: true,
+      teachingJump: true,
+      teachingHeat: true,
+      partialCover: true,
+      woods: true,
+      terrainCost: true,
+    }),
+    skill: 4,
+    forces: { innerSphere: ["WHM-8R"], clan: ["TW-Prime"] },
+    extraPieces: ["2 large buildings", "4 trees", "both dice", "a tape measure"],
+    terrain: [
+      named("host", "{name}, take one large building and put it in the middle of the table."),
+      named("guest", "{name}, take the other large building and put it in the middle, a hand's width from the first."),
+      named("host", "{name}, take two trees and put them on your half."),
+      named("guest", "{name}, take two trees and put them on your half."),
+    ],
+    layout: ORCHARD,
+    beaconGoal: 2,
+  },
+  {
     id: "jump-jets",
     group: "real",
     title: "Jump Jets",
     summary: "Jumping ignores terrain and changes the shot.",
-    chapter: "Chapter 6: Over the Wall",
+    chapter: "Chapter 7: Over the Wall",
     story: [
       garrison("Garrison Command: a town wall stands between our line and theirs."),
       narrator("Lieutenant {is} brings a Phoenix Hawk. Clan channel:"),
@@ -477,80 +567,24 @@ export const SCENARIOS: Scenario[] = [
       draw: [narrator("Both jumpers fall. The wall stands empty.")],
     },
     lesson:
-      "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it.",
-    table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
-    rules: rules({ realRange: true, tmm: true, standstill: true, realJump: true }),
-    skill: 4,
-    forces: { innerSphere: ["PXH-3K"], clan: ["POU-Prime"] },
-    extraPieces: ["both dice", "a tape measure"],
-    terrain: [],
-    beaconGoal: 2,
-  },
-  {
-    id: "trees-and-walls",
-    group: "real",
-    title: "Trees and Walls",
-    summary: "Movement cost, woods, and partial cover.",
-    chapter: "Chapter 7: The Orchard",
-    story: [
-      garrison("Garrison Command: the Mad Cat from the duel is back, in the orchards outside town."),
-      narrator("Lieutenant {is} takes the Warhammer in after it. Clan channel:"),
-      falcon(
-        "\"Star Commander {clan}. We finish what we began, Lieutenant.\"",
-        "Star Commander here. We finish what we began, Lieutenant.",
-      ),
-      narrator(
-        "Both pilots have to think about the ground, not just the guns. Trees cost extra inches to walk through. A building can hide most of a mech.",
-      ),
-    ],
-    goal: "Knock out every enemy mech.",
-    sides: {
-      innerSphere: {
-        unit: LYRAN,
-        orders: "Garrison Command: Use the orchard. Make the Mad Cat pay for every inch.",
-        plan: [
-          "Clear ground costs 1 inch of move per inch you walk. Trees cost 2.",
-          "If two-thirds of the enemy is behind a building, the shot is one harder.",
-          "Trees in the way, or a target standing in trees, are also one harder.",
-        ],
-      },
-      clan: {
-        unit: FALCON,
-        orders: "Galaxy Command: Cross the orchard without wasting your move in the trees.",
-        plan: [
-          "Walking through trees costs 2 inches for every inch you travel.",
-          "Hide two-thirds of the Timber Wolf behind a building when you can.",
-          "A jump would skip the tree cost. This mech does not jump, so walk the open lane.",
-        ],
-      },
-    },
-    ending: {
-      innerSphere: [tag("Lieutenant {is}:"), lyran("\"Mad Cat down in the trees.\""), narrator("The orchard stays Lyran.")],
-      clan: [tag("Star Commander {clan}:"), falcon("\"The Warhammer lies in the orchard. This ground is ours.\"")],
-      draw: [narrator("Both mechs fall among the trees. The orchard goes quiet.")],
-    },
-    lesson:
-      "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. Jumping skips those costs. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover.",
+      "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it. Landing in the trees or against the building is still the one-harder cover shot.",
+    review: "Trees and a building still make the shot one harder. A jump ignores the extra inches to cross them, not that cover.",
     table: "Clear a space about 3 feet by 4 feet. Sit on the long edges.",
     rules: rules({
       realRange: true,
       tmm: true,
       standstill: true,
+      teachingHeat: true,
       realJump: true,
       partialCover: true,
       woods: true,
       terrainCost: true,
     }),
     skill: 4,
-    forces: { innerSphere: ["WHM-8R"], clan: ["TW-Prime"] },
-    extraPieces: ["2 large buildings", "4 trees", "both dice", "a tape measure"],
-    terrain: [
-      named("host", "{name}, take one large building and put it in the middle of the table."),
-      named("guest", "{name}, take the other large building and put it in the middle, a hand's width from the first."),
-      named("host", "{name}, take two trees and put them on your half."),
-      named("guest", "{name}, take two trees and put them on your half."),
-    ],
-    layout: ORCHARD,
+    forces: { innerSphere: ["PXH-3K"], clan: ["POU-Prime"] },
+    extraPieces: ["1 wall", "1 large building", "2 trees", "both dice", "a tape measure"],
+    terrain: stepsFor(JUMP_WALL),
+    layout: JUMP_WALL,
     beaconGoal: 2,
   },
   {
@@ -602,7 +636,16 @@ export const SCENARIOS: Scenario[] = [
     lesson:
       "The OV on the card is how much extra damage you may add at short or medium range. You choose it before you roll. At the end of the turn, mark that much heat. Your heat is added to your next weapon shot. Twice your heat comes off your walk inches. At heat 2 or more, TMM drops by 1 unless you jump. Heat 4 shuts the mech down for a turn. If you do not shoot, erase the heat. Water cools one heat if you did shoot.",
     table: "Clear a square about 3 feet on each side. No buildings. Sit on opposite edges.",
-    rules: rules({ realRange: true, tmm: true, standstill: true, heatScale: true }),
+    rules: rules({
+      realRange: true,
+      tmm: true,
+      standstill: true,
+      realJump: true,
+      partialCover: true,
+      woods: true,
+      terrainCost: true,
+      heatScale: true,
+    }),
     skill: 4,
     forces: { innerSphere: ["WHM-8R"], clan: ["NOV-Prime"] },
     extraPieces: ["both dice", "a tape measure"],
@@ -650,8 +693,20 @@ export const SCENARIOS: Scenario[] = [
     },
     lesson:
       "A hit in the back of the base marks one extra bubble. Armor bubbles go first, then red structure bubbles. If structure is marked and the mech is still standing, roll two dice and read the critical hit table on the tables card in the box. A roll of 12 does that even if only armor was marked. The mech comes off the table when the last structure bubble is marked.",
+    review: "Heat still comes off the walk, and heat 4 still shuts the mech down.",
     table: "Clear a square about 3 feet on each side. Keep the tables card next to the dice.",
-    rules: rules({ realRange: true, tmm: true, standstill: true, rear: true, crits: true }),
+    rules: rules({
+      realRange: true,
+      tmm: true,
+      standstill: true,
+      realJump: true,
+      partialCover: true,
+      woods: true,
+      terrainCost: true,
+      heatScale: true,
+      rear: true,
+      crits: true,
+    }),
     skill: 4,
     forces: { innerSphere: ["AS7-S"], clan: ["WHK-C"] },
     extraPieces: ["both dice", "a tape measure", "the tables card from the box"],
@@ -708,6 +763,12 @@ export const SCENARIOS: Scenario[] = [
       tmm: true,
       standstill: true,
       realJump: true,
+      partialCover: true,
+      woods: true,
+      terrainCost: true,
+      heatScale: true,
+      rear: true,
+      crits: true,
       physical: true,
     }),
     skill: 4,

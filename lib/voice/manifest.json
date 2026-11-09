@@ -195,6 +195,16 @@
       "seconds": 10.655011337868482,
       "text": "Only one side touching the post scores. If both sides touch it, nobody scores that turn. A fast mech gets there first, but a slow mech with big guns can push it off."
     },
+    "galaxy-1l722hza257": {
+      "file": "/voice/galaxy-1l722hza257.mp3",
+      "seconds": 17.382290249433108,
+      "text": "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it. Landing in the trees or against the building is still the one-harder cover shot."
+    },
+    "galaxy-1lejupv3a2m": {
+      "file": "/voice/galaxy-1lejupv3a2m.mp3",
+      "seconds": 5.465351473922903,
+      "text": "A mech that moved still adds its TMM. Standing still makes its own shot one easier."
+    },
     "galaxy-1o43hvcc75i": {
       "file": "/voice/galaxy-1o43hvcc75i.mp3",
       "seconds": 13.418185941043085,
@@ -219,6 +229,11 @@
       "file": "/voice/galaxy-1t5aryyvlii.mp3",
       "seconds": 5.546621315192744,
       "text": "Galaxy Command: Take the town. The Fire Moth is fast and thin. Give it a wall."
+    },
+    "galaxy-1tkvxqxfpqg": {
+      "file": "/voice/galaxy-1tkvxqxfpqg.mp3",
+      "seconds": 22.920249433106573,
+      "text": "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover."
     },
     "galaxy-1vh3r71fn8u": {
       "file": "/voice/galaxy-1vh3r71fn8u.mp3",
@@ -265,6 +280,11 @@
       "seconds": 21.643151927437643,
       "text": "Use the Warhammer side labeled 8R and the Timber Wolf side labeled Prime. The other sides are not an even match. The skill spot is blank, so both pilots are regular and the dice need 4. Count the armor bubbles and the red structure bubbles once. The coach keeps that count. Mark the same bubbles on the card. After two turns, both pilots pull back. Nobody loses."
     },
+    "galaxy-2dnjbk2y8np": {
+      "file": "/voice/galaxy-2dnjbk2y8np.mp3",
+      "seconds": 4.060544217687075,
+      "text": "A mech that shoots is still Hot. That next shot needs one more."
+    },
     "galaxy-2girmks41j5": {
       "file": "/voice/galaxy-2girmks41j5.mp3",
       "seconds": 13.116326530612245,
@@ -300,6 +320,11 @@
       "seconds": 12.860907029478458,
       "text": "Teaching heat: a mech that shoots is Hot next turn, and its shot needs one more. If it does not shoot, it cools off. A mech alone on the beacon at the end of the turn scores 1. First to 2, or the last side standing."
     },
+    "galaxy-akejc7pl3d": {
+      "file": "/voice/galaxy-akejc7pl3d.mp3",
+      "seconds": 4.478503401360545,
+      "text": "Heat still comes off the walk, and heat 4 still shuts the mech down."
+    },
     "galaxy-b8pwiackdc": {
       "file": "/voice/galaxy-b8pwiackdc.mp3",
       "seconds": 10.353151927437642,
@@ -324,6 +349,11 @@
       "file": "/voice/galaxy-jb7rxdr9v5.mp3",
       "seconds": 4.989342403628118,
       "text": "Galaxy Command: The Pouncer jumps for the beacon. The Timber Wolf shoots past it."
+    },
+    "galaxy-w6tx7uwo0a": {
+      "file": "/voice/galaxy-w6tx7uwo0a.mp3",
+      "seconds": 6.696009070294785,
+      "text": "Trees and a building still make the shot one harder. A jump ignores the extra inches to cross them, not that cover."
     },
     "galaxy-y03k27c3i2": {
       "file": "/voice/galaxy-y03k27c3i2.mp3",
@@ -355,10 +385,20 @@
       "seconds": 6.057460317460317,
       "text": "Garrison Command: Answer the batchall. Learn the shot. Walk away when the two turns are done."
     },
+    "garrison-1545455bpxe": {
+      "file": "/voice/garrison-1545455bpxe.mp3",
+      "seconds": 4.350793650793651,
+      "text": "Heat still comes off the walk, and heat 4 still shuts the mech down."
+    },
     "garrison-173y4ya2r39": {
       "file": "/voice/garrison-173y4ya2r39.mp3",
       "seconds": 4.350793650793651,
       "text": "Garrison Command: One more point and Twycross can hear again."
+    },
+    "garrison-17y8cfn8fx7": {
+      "file": "/voice/garrison-17y8cfn8fx7.mp3",
+      "seconds": 4.559773242630386,
+      "text": "A mech that shoots is still Hot. That next shot needs one more."
     },
     "garrison-1aazjbs8ljx": {
       "file": "/voice/garrison-1aazjbs8ljx.mp3",
@@ -384,6 +424,11 @@
       "file": "/voice/garrison-1k60lrvr9d0.mp3",
       "seconds": 7.1255782312925176,
       "text": "Garrison Command: Lieutenant, stop them on the ridge. Use the buildings. Do not let them reach the port."
+    },
+    "garrison-1kbo4qjaibh": {
+      "file": "/voice/garrison-1kbo4qjaibh.mp3",
+      "seconds": 18.61294784580499,
+      "text": "A jump move is the inches next to the j on the card. Jumping ignores trees and buildings. It cannot jump out of water. A mech that jumped adds 2 to its own shot, and 1 on top of its TMM when someone shoots it. Landing in the trees or against the building is still the one-harder cover shot."
     },
     "garrison-1li8tw7fbq4": {
       "file": "/voice/garrison-1li8tw7fbq4.mp3",
@@ -415,6 +460,11 @@
       "seconds": 4.7339229024943315,
       "text": "Garrison Command: Get behind the Warhawk. The back is the soft part."
     },
+    "garrison-1rqaqw4ppnp": {
+      "file": "/voice/garrison-1rqaqw4ppnp.mp3",
+      "seconds": 22.74609977324263,
+      "text": "Clear ground costs 1 inch of move per inch you travel. Trees cost 2. A climb costs extra, and a step up steeper than 2 inches is not allowed. If two-thirds of the target is hidden by a building, a hill, or water, the shot is one harder. Trees in the way, or a target standing in trees, are also one harder. Trees do not count as that hiding cover."
+    },
     "garrison-1zh1lq7pvks": {
       "file": "/voice/garrison-1zh1lq7pvks.mp3",
       "seconds": 13.290476190476191,
@@ -434,6 +484,11 @@
       "file": "/voice/garrison-28zrknug6fk.mp3",
       "seconds": 33.652970521541945,
       "text": "This is the whole quick-start turn from the box: initiative, move, the shot number, heat, rear, crits, punches, sprints, charges, and death from above. Sprint is one and a half times the walk inches, rounded up, and that mech cannot shoot. A charge is declared while moving, only at a mech that already moved, and you must end touching it. Read any special ability on the card out loud and use the card. The tables card still decides crits. Formations, pilot cards, and battlefield support stay in the box for another day."
+    },
+    "garrison-292nrfba0wv": {
+      "file": "/voice/garrison-292nrfba0wv.mp3",
+      "seconds": 6.777278911564626,
+      "text": "Trees and a building still make the shot one harder. A jump ignores the extra inches to cross them, not that cover."
     },
     "garrison-2dl75dp7wk0": {
       "file": "/voice/garrison-2dl75dp7wk0.mp3",
@@ -579,6 +634,11 @@
       "file": "/voice/garrison-v3ripkqx2m.mp3",
       "seconds": 8.611655328798186,
       "text": "With two objectives you have to choose. Split up to score both, or stay together and be safer. Check each crate on its own at the end of the turn."
+    },
+    "garrison-vwbyuqjeuz": {
+      "file": "/voice/garrison-vwbyuqjeuz.mp3",
+      "seconds": 5.593061224489796,
+      "text": "A mech that moved still adds its TMM. Standing still makes its own shot one easier."
     },
     "garrison-w5mane3iz7": {
       "file": "/voice/garrison-w5mane3iz7.mp3",
@@ -834,6 +894,11 @@
       "file": "/voice/narrator-1bb8anwegq0.mp3",
       "seconds": 5.117052154195012,
       "text": "Trees in the way, or a target standing in trees, are also one harder."
+    },
+    "narrator-1bfowuhmndp": {
+      "file": "/voice/narrator-1bfowuhmndp.mp3",
+      "seconds": 4.606213151927438,
+      "text": "These mechs do not jump, so walk the open lane and pay the tree cost."
     },
     "narrator-1d8y10z5bc9": {
       "file": "/voice/narrator-1d8y10z5bc9.mp3",
@@ -2331,7 +2396,7 @@
     },
     "trees-and-walls.clan": {
       "url": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/briefings/trees-and-walls.clan.mp4",
-      "seconds": 16.98,
+      "seconds": 16.01,
       "poster": "https://evrk5hpqnej9jkfr.public.blob.vercel-storage.com/briefings/trees-and-walls.clan.jpg",
       "captions": [
         {
@@ -2350,9 +2415,9 @@
           "end": 11.01
         },
         {
-          "text": "A jump would skip the tree cost. This mech does not jump, so walk the open lane.",
+          "text": "These mechs do not jump, so walk the open lane and pay the tree cost.",
           "start": 11.01,
-          "end": 16.16
+          "end": 15.14
         }
       ]
     },

@@ -193,8 +193,9 @@ a.back-link {
 
 .row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.55rem;
   padding: 0.45rem 0;
   border-top: 1px solid rgba(243, 230, 207, 0.16);
 }
@@ -203,7 +204,7 @@ a.back-link {
 
 .row.out { opacity: 0.55; text-decoration: line-through; }
 
-.who { font-weight: 700; }
+.who { font-weight: 700; flex: 1; }
 
 .detail { color: #d9c7a6; text-align: right; }
 
@@ -899,6 +900,17 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
   font-weight: 700;
 }
 
+.mech-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid var(--amber);
+  background: #000;
+  box-shadow: none;
+}
+.mech-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mech-full { width: 100%; height: auto; object-fit: contain; background: #000; }
 .row-actions { display: flex; gap: 0.45rem; align-items: center; flex: none; }
 
 .row-actions a { color: var(--amber); font-weight: 700; }
@@ -950,6 +962,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.62); }
 
 .theater { display: grid; gap: 0.45rem; margin: 0 0 0.8rem; }
 .theater-frame { position: relative; aspect-ratio: 4 / 5; height: min(52vh, 30rem); max-width: 100%; margin: 0 auto; background: #000; border: 3px solid var(--amber); overflow: hidden; }
+.theater-frame.scene { width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .theater-frame img, .theater-frame video { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; display: block; }
 .theater-frame video.theater-hold { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .theater-frame.speaking img { animation: theater-zoom var(--dur, 4s) linear forwards; }

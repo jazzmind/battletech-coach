@@ -31,6 +31,7 @@ export function present(state: GameState, playerId: string): Screen {
 function finish(state: GameState, playerId: string, screen: Screen): Screen {
   const scenario = scenarioOf(state)
   screen.hud.goal = goalLine(state)
+  if (scenario.review) screen.review = scenario.review
   if (state.layout) {
     const highlight = screen.map?.highlight
     const stage = state.phase === "lobby" || state.phase === "draft" || state.phase === "briefing" || state.phase === "place"
@@ -1076,6 +1077,7 @@ function blank(state: GameState, playerId: string): Screen {
         detail: hudDetail(mech),
         mine: mech.ownerId === playerId,
         out: mech.knockedOut,
+        art: miniByName(mech.name)?.art,
       })),
     },
     undo:

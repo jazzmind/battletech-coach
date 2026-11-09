@@ -28,7 +28,10 @@ export function ordersLines(scenario: Scenario, faction: Faction): Line[] {
 
 export function lessonLines(scenario: Scenario, faction: Faction = "innerSphere"): Line[] {
   const command = faction === "innerSphere" ? garrison : galaxy
-  return [command(scenario.lesson)]
+  const lines: Line[] = []
+  if (scenario.review) lines.push(command(scenario.review))
+  lines.push(command(scenario.lesson))
+  return lines
 }
 
 export function endingLines(scenario: Scenario, outcome: Faction | "draw"): Line[] {

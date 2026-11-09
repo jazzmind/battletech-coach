@@ -243,6 +243,7 @@ export type Screen = {
   note?: string
   lesson?: string
   lessonKicker?: string
+  review?: string
   mission?: {
     chapter: string
     story: string
@@ -308,7 +309,7 @@ export type Screen = {
     scenario: string
     turn: string
     goal: string
-    rows: { id: string; name: string; detail: string; mine: boolean; out: boolean }[]
+    rows: { id: string; name: string; detail: string; mine: boolean; out: boolean; art?: string }[]
   }
   over?: { winner: string; reason: string }
   undo?: Action

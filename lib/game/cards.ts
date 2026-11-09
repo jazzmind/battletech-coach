@@ -33,8 +33,13 @@ export type MiniPhoto = {
 export type Mini = {
   name: string
   faction: Faction
+  art?: string
   photo?: MiniPhoto
   faces: CardFace[]
+}
+
+export function mechArt(name: string): string {
+  return `/art/mechs/${name.toLowerCase().replace(/ /g, "-")}.jpg`
 }
 
 const face = (card: CardFace): CardFace => card
@@ -569,6 +574,8 @@ export const MINIS: Mini[] = [
     ],
   },
 ]
+
+for (const mini of MINIS) mini.art = mechArt(mini.name)
 
 const byId = new Map(MINIS.flatMap((mini) => mini.faces.map((card) => [card.id, card])))
 const byName = new Map(MINIS.map((mini) => [mini.name, mini]))
